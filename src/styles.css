@@ -520,3 +520,7 @@ textarea.notes { width: 100%; max-width: 900px; font-size: calc(15px * var(--fs)
 body.dark .boxnotes, body.dark .boxfoot { background: #1b2436; border-color: #3a4660; color: #ddd; } body.dark table.boxt tr.star td, body.dark table.boxt tr.tot td { background: #3a3316; } body.dark table.boxt tr.sub td.l { color: #aaa; }
 @media (max-width: 1100px) { .box-cols { grid-template-columns: 1fr; } }
 @media print { .hero, .btnrow { display: none !important; } }
+
+/* the board-game view: the cards sit on the field */
+.fieldwrap.withcards .fcard { position: absolute; top: 50%; transform: translateY(-50%) scale(var(--cs, 1)); width: 236px; z-index: 5; }
+.fieldwrap.withcards .fcard.left { left: 10px; transform-origin: left center; } .fieldwrap.withcards .fcard.right { right: 10px; transform-origin: right center; }

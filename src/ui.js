@@ -8,7 +8,7 @@ const VIEW_PRESETS = {
   everything: { cards: true, lineups: true, pbp: true, scout: true, settings: true, field: 'medium' },
   simple: { cards: false, lineups: true, pbp: true, scout: false, settings: false, field: 'large' },
   scorekeeper: { cards: false, lineups: true, pbp: true, scout: false, settings: true, field: 'small' },
-  boardgame: { cards: true, lineups: false, pbp: false, scout: false, settings: false, field: 'large' },
+  boardgame: { cards: true, cardsIn: true, lineups: false, pbp: false, scout: false, settings: false, field: 'large' },
 };
 let VIEW = Object.assign({}, VIEW_PRESETS.everything);
 try { const v = JSON.parse(localStorage.getItem('BF5_view') || 'null'); if (v) VIEW = Object.assign({}, VIEW_PRESETS.everything, v); } catch (e) {}
@@ -22,6 +22,7 @@ Actions.viewMenu = () => {
     <div class="small" style="margin-bottom:6px">Pick a preset, then fine-tune. Your choice is remembered.</div>
     <div class="btnrow"><button class="btn" onclick="Actions.viewPreset('everything')">Everything</button><button class="btn" onclick="Actions.viewPreset('simple')">Simple</button><button class="btn" onclick="Actions.viewPreset('scorekeeper')">Scorekeeper</button><button class="btn" onclick="Actions.viewPreset('boardgame')">Board game</button></div>
     ${chk('cards', 'Player cards', 'the batter and pitcher cards with their roll ranges')}
+    ${chk('cardsIn', 'Cards on the field', 'the two cards sit inside the field box, either side of the diamond, and the field gets bigger')}
     ${chk('lineups', 'Lineups', 'both batting orders with the dropdowns, Staff buttons and stamina bars')}
     ${chk('pbp', 'Play-by-play', 'the last plays, newest first')}
     ${chk('settings', 'Defense and settings', 'infield, outfield, pitch around, injuries')}
@@ -593,17 +594,18 @@ function gameScreen() {
   const buntCap = ((!bs[0] && !bs[1]) || G.outs >= 2) ? 'bunt for a hit (grade ' + buntGrade(bid || 'zzBAT') + ')' : 'sacrifice (grade ' + buntGrade(bid || 'zzBAT') + ')';
   const pkManual = opt('Pickoffs') === 'Manual';
   const wide = innerWidth >= 1500 && innerHeight >= 700, xwide = innerWidth >= 2000;
-  const cols = []; if (VIEW.cards) cols.push('236px'); cols.push('minmax(480px, 1fr)'); if (VIEW.cards) cols.push('236px');
+  const cardsIn = VIEW.cards && VIEW.cardsIn;
+  const cols = []; if (VIEW.cards && !cardsIn) cols.push('236px'); cols.push('minmax(480px, 1fr)'); if (VIEW.cards && !cardsIn) cols.push('236px');
   const luCol = VIEW.lineups && wide; if (luCol) cols.push('minmax(400px, 470px)');
   const sideCol = (VIEW.settings || VIEW.pbp) && xwide; if (sideCol) cols.push('minmax(380px, 460px)');
   root.innerHTML = `
   <div class="sticky"><div class="gtop"><div class="gtitle">${esc(G.title)}</div>${scoreboardHtml()}</div>
   ${situationHtml()}</div>
   <div class="gmain" style="grid-template-columns:${cols.join(' ')}">
-    ${VIEW.cards ? `<div class="col card-col">${cards[0]}</div>` : ''}
+    ${VIEW.cards && !cardsIn ? `<div class="col card-col">${cards[0]}</div>` : ''}
     <div class="col mid">
       <div class="nextbox"><div class="nexttext">${esc(st.text)}</div>${st.btn ? `<button class="btn primary ${st.kind || ''}" onclick="Actions.primary()">${esc(st.btn)}</button>` : ''}</div>
-      <div class="fieldwrap"><svg id="field" viewBox="0 0 600 428" preserveAspectRatio="xMidYMid meet"></svg><div id="popHost" class="hidden"></div></div>
+      <div class="fieldwrap${cardsIn ? ' withcards' : ''}"><svg id="field" viewBox="0 0 600 428" preserveAspectRatio="xMidYMid meet"></svg>${cardsIn ? `<div class="fcard left">${cards[0]}</div><div class="fcard right">${cards[1]}</div>` : ''}<div id="popHost" class="hidden"></div></div>
       <div class="playrow">${diceHtml()}<div class="play ${playKind(G.rollTxt + ' ' + G.playTxt)}"><div class="rolltxt">${esc(G.rollTxt)}</div><div class="playtxt">${esc(G.playTxt)}</div>${recentPlays()}</div></div>
       <div class="extra">${esc(G.extra)}</div>
       <div class="ph2">MANAGER MOVES <small>· before you roll</small></div>
@@ -621,7 +623,7 @@ function gameScreen() {
         <button class="btn ${G.over ? 'go' : ''}" onclick="Actions.nextGame()" title="Load the next game on the schedule">Next game</button><button class="btn" onclick="Actions.simGame()" title="The computer plays the rest of this game">Sim the rest</button><button class="btn" onclick="Actions.exhibitionOpen()" title="Pick any two teams">Exhibition</button>
       </div>
     </div>
-    ${VIEW.cards ? `<div class="col card-col">${cards[1]}</div>` : ''}
+    ${VIEW.cards && !cardsIn ? `<div class="col card-col">${cards[1]}</div>` : ''}
     ${VIEW.lineups ? `<div class="lucols" style="${luCol ? 'grid-column:auto;grid-template-columns:1fr;gap:6px' : ''}"><div class="lucol">${lineupHtml(0)}${staminaHtml(0)}</div><div class="lucol">${lineupHtml(1)}${staminaHtml(1)}</div></div>` : ''}
     ${VIEW.settings || VIEW.pbp ? `<div class="side" style="${sideCol ? 'grid-column:auto;grid-template-columns:1fr;gap:8px;align-content:start' : VIEW.settings && VIEW.pbp ? '' : 'grid-template-columns:1fr'}">` : ''}
       ${VIEW.settings ? `<div class="panel"><div class="ph">DEFENSE AND SETTINGS</div>
@@ -643,12 +645,12 @@ function sizeField() {
   // the field takes the room that is left on screen, so the dice and the manager moves stay in view
   const fw = document.querySelector('.fieldwrap'); if (!fw) return;
   const w = fw.getBoundingClientRect().width || 600; const byWidth = w * vbH() / 600;
-  const below = (document.querySelector('.playrow') ? 80 : 0) + (G.over || G.pregame ? 0 : 0) + 190;   // dice row, manager moves, game buttons
+  const below = VIEW.cards && VIEW.cardsIn ? 110 : (document.querySelector('.playrow') ? 80 : 0) + 190;   // dice row (and, unless the cards are on the field, the manager moves and game buttons)
   const avail = Math.max(220, innerHeight - fw.getBoundingClientRect().top - below);
   const cap = VIEW.field === 'small' ? Math.min(avail, innerHeight * 0.34) : VIEW.field === 'large' ? avail : Math.min(avail, innerHeight * 0.5);
   const h = Math.max(200, Math.min(byWidth, cap));
   fw.style.height = h + 'px'; const svg = fw.querySelector('svg');
-  if (svg) { svg.style.height = h + 'px'; svg.style.width = '100%'; const extra = stadiumLook() ? Math.max(0, Math.min(900, vbH() * w / h - 600)) : 0; gViewX = -Math.round(extra / 2); svg.setAttribute('viewBox', `${gViewX} ${vbY()} ${Math.round(600 + extra)} ${vbH()}`); fw.classList.toggle('classic', !stadiumLook()); }
+  if (svg) { svg.style.height = h + 'px'; svg.style.width = '100%'; const extra = stadiumLook() ? Math.max(0, Math.min(900, vbH() * w / h - 600)) : 0; gViewX = -Math.round(extra / 2); svg.setAttribute('viewBox', `${gViewX} ${vbY()} ${Math.round(600 + extra)} ${vbH()}`); fw.classList.toggle('classic', !stadiumLook()); if (fw.classList.contains('withcards')) { const side = (w - h * 600 / vbH()) / 2; fw.style.setProperty('--cs', String(clamp(side / 250, 0.8, 1.45).toFixed(2))); } }
 }
 
 // ======================= other screens =======================
