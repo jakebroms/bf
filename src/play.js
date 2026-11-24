@@ -11,15 +11,18 @@ async function getRoll(label, preview) {
   if (solo()) { const v = await UI.soloRoll(label, preview); if (v >= 1 && v <= 1000) return v; }
   return rnd1000();
 }
-function extraRoll(label) { const v = rnd1000(); gExtra += label + ': ' + v + '   '; return v; }
+let gMainRollTxt = '';
+// an extra roll (double play try, fielding check, steal, send/hold, at the wall) takes over the big dice and the roll line
+function extraShow(label, v) { G.dice = v; G.rollTxt = label + ' · rolled ' + v + (gMainRollTxt ? '  (' + gMainRollTxt + ')' : ''); }
+function extraRoll(label) { const v = rnd1000(); gExtra += label + ': ' + v + '   '; extraShow(label, v); return v; }
 function chance(p, label) { if (p <= 0) return false; const ok = rand() < p; if (ok) gExtra += label + '   '; return ok; }
-function showDice(v, txt) { G.dice = v; G.loc = null; G.rollTxt = txt; UI.showDice(v, txt); }
+function showDice(v, txt) { G.dice = v; G.loc = null; G.rollTxt = txt; gMainRollTxt = txt; UI.showDice(v, txt); }
 async function popRoll(title, sub, rows, lbl) {
   const kind = gPopKind; gPopKind = '';
   if (!popOn() || (kind && !popOpt(kind))) return extraRoll(lbl);
   UI.refresh();
   const rr = await UI.popRoll(title, sub, rows, lbl);
-  gExtra += lbl + ': ' + rr + '   ';
+  gExtra += lbl + ': ' + rr + '   '; extraShow(lbl, rr);
   gPopCap = true; gPopOut = '';
   return rr;
 }
@@ -977,7 +980,7 @@ async function playPending() {
   gExtra = ''; const roll = pend.roll; gHitRun = !!pend.hr;
   const side = batSideTeam(); let bslot = G.next[side]; if (bslot < 1) bslot = 1;
   gBatID = slotID(side, bslot); gPitID = curPitcherID(fieldSideTeam()); gMainRoll = roll;
-  G.extra = ''; const logStart = G.log.length, outs0 = G.outs, rbi0 = (boxBatFind(gBatID) || { RBI: 0 }).RBI, r0 = (boxBatFind(gBatID) || { R: 0 }).R;
+  G.extra = ''; gMainRollTxt = ''; const logStart = G.log.length, outs0 = G.outs, rbi0 = (boxBatFind(gBatID) || { RBI: 0 }).RBI, r0 = (boxBatFind(gBatID) || { R: 0 }).R;
   if (pend.findTxt) G.rollTxt = pend.findTxt;
   if (pend.kind === 'X') { G.pend = { kind: 'done', of: 0, loc: pend.loc }; await resolveX(pend.f, roll); }
   else { G.pend = { kind: 'done', of: pend.of || 0, loc: pend.loc }; G.rollTxt = 'Roll ' + roll + ' · ' + LBL[pend.k]; await resolveEvent(ROW_EV[pend.k], ROW_SUB[pend.k], roll, 0); }
