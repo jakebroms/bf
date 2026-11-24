@@ -142,4 +142,4 @@ const Snd = {
   toggle() { this.on = !this.on; try { localStorage.setItem('BF5_sound', this.on ? '1' : '0'); } catch (e) {} if (this.on) { this.play('click'); this.ambient(true); } else if (this.ambientOn) this.ambient(false); },
   load() { try { this.on = localStorage.getItem('BF5_sound') !== '0'; const v = parseFloat(localStorage.getItem('BF5_vol')); if (!isNaN(v)) this.vol = v; } catch (e) {} },
 };
-const sfx = (name, delay, o) => Snd.play(name, delay, o);
+const sfx = (name, delay, o) => { if (/homer|walkoff|final|score|triple/.test(name) && typeof gSpark !== 'undefined') gSpark = Date.now() + 2600; return Snd.play(name, delay, o); };

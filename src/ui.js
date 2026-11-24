@@ -897,6 +897,7 @@ UI.syncState = () => { const el = $('sync'); if (!el) return; if (!Net.available
 // ======================= refresh =======================
 const SCREENS = { game: ['Game', gameScreen], paper: ['Gazette', paperScreen], scorebook: ['Scorebook', scorebookScreen], box: ['Box score', boxScreen], log: ['Log', logScreen], schedule: ['Schedule', scheduleScreen], standings: ['Standings & race', standingsScreen], leaders: ['Leaders & awards', leadersScreen], season: ['Season stats', seasonScreen], cards: ['Cards', cardsScreen], parks: ['Ballparks', parksScreen], lineups: ['Lineups', lineupsScreen], playoffs: ['Playoffs', playoffsScreen], options: ['Options', optionsScreen], help: ['Help', helpScreen], account: ['Account', accountScreen] };
 // the menu: one tab for the game, then a dropdown for each kind of thing
+Actions.navOpen = el => { const was = el.classList.contains('open'); document.querySelectorAll('.navg.open').forEach(x => x.classList.remove('open')); if (!was) el.classList.add('open'); };
 const NAV_GROUPS = [['game'], ['Reading', 'paper', 'box', 'scorebook', 'log'], ['Season', 'schedule', 'standings', 'leaders', 'season', 'playoffs'], ['Teams', 'lineups', 'cards', 'parks'], ['Settings', 'options', 'help', 'account']];
 Actions.toggleSound = () => { Snd.toggle(); UI.refresh(); };
 Actions.toggleDark = () => { document.body.classList.toggle('dark'); try { localStorage.setItem('BF5_dark', document.body.classList.contains('dark') ? '1' : '0'); } catch (e) {} UI.refresh(); };
@@ -905,7 +906,7 @@ UI.refresh = () => {
   const nav = $('nav'); nav.innerHTML = NAV_GROUPS.map(g => {
     if (g.length === 1) { const k = g[0]; return `<button class="tab${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`; }
     const title = g[0], keys = g.slice(1), here = keys.includes(curScreen);
-    return `<div class="navg${here ? ' here' : ''}"><button class="tab${here ? ' on' : ''}" onclick="this.parentNode.classList.toggle('open')">${title}${here ? ' · ' + SCREENS[curScreen][0] : ''} <span class="caret">▾</span></button><div class="navdd">${keys.map(k => `<button class="navitem${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`).join('')}</div></div>`;
+    return `<div class="navg${here ? ' here' : ''}"><button class="tab${here ? ' on' : ''}" onclick="Actions.navOpen(this.parentNode)">${title}${here ? ' · ' + SCREENS[curScreen][0] : ''} <span class="caret">▾</span></button><div class="navdd">${keys.map(k => `<button class="navitem${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`).join('')}</div></div>`;
   }).join('');
   const tools = $('tools'); if (tools) tools.innerHTML = `<span id="sync" class="sync"></span><button class="tool" onclick="Actions.viewMenu()" title="Choose what is on the game screen">☰ View</button><button class="tool" onclick="Actions.toggleSound()" title="Sound effects on or off">${Snd.on ? '🔊 Sound on' : '🔇 Sound off'}</button><input type="range" class="vol" min="0" max="100" value="${Math.round(Snd.vol * 100)}" title="Volume" oninput="Snd.setVol(this.value/100)" onchange="sfx('hit',0,{home:true})"><button class="tool" onclick="Actions.toggleDark()" title="Dark or light screen">${document.body.classList.contains('dark') ? '☀ Light mode' : '🌙 Dark mode'}</button><button class="tool" onclick="Actions.toggleBig()" title="Bigger text">${document.body.classList.contains('big') ? 'A Normal text' : 'A+ Bigger text'}</button>`;
   UI.syncState();
@@ -916,6 +917,9 @@ function showTribute() {
   m.innerHTML = `<div class="tribute"><div class="tcard"><div class="tband">Jim Bouton</div><div class="tsub">NEW YORK YANKEES · 1963 · Pitcher · Throws R</div><div class="tstrip">21-7 · 2.53 ERA · 249 IP · 148 K</div></div><div class="ttext"><h1>JIM BOUTON</h1><h2>1939-2019</h2><p>${esc(D.readme[2].replace('DEDICATED TO JIM BOUTON (1939-2019): ', ''))}</p><button class="btn gold" id="tbGo">PLAY BALL</button></div></div>`;
   $('tbGo').onclick = () => { m.classList.add('hidden'); m.innerHTML = ''; };
 }
+document.addEventListener('click', e => { if (!e.target.closest('.navg')) document.querySelectorAll('.navg.open').forEach(x => x.classList.remove('open')); });
+document.addEventListener('mouseover', e => { const g = e.target.closest('.navg'); if (!g) return; const o = document.querySelector('.navg.open'); if (o && o !== g) { o.classList.remove('open'); g.classList.add('open'); } });
+document.addEventListener('mouseout', e => { const g = e.target.closest('.navg'); if (g && !g.contains(e.relatedTarget)) g.classList.remove('open'); });
 window.addEventListener('DOMContentLoaded', async () => {
   loadAll(); Net.load();
   if (Net.available) { await Net.me(); if (Net.user) { await Net.pullSave(); Net.flushQueue(); } }

@@ -58,6 +58,10 @@ function dhStatus(si) {
 // ---------- the crowd ----------
 function rollAttendance() {
   G.att = 0; G.gate = 0; G.attNote = '';
+  // night or day: 1977 weeknights were night games; Sundays and Wrigley Field were day games
+  const dow0 = gameDOW(), parkNow = parkName();
+  G.night = /Wrigley/.test(parkNow) ? false : dow0 === 'Sunday' ? rand() < 0.08 : dow0 === 'Saturday' ? rand() < 0.5 : dow0 ? rand() < 0.82 : rand() < 0.6;
+  G.sky = G.weather && G.weather.dir === 'Rain' ? 'cloudy' : rand() < 0.3 ? 'cloudy' : 'clear';
   if (G.exhib || G.sched < 0 && G.playoffRow < 0) return;
   const home = teamCode(1), away = teamCode(0), park = parkName();
   const base = ATT77[home] || [15000, 50000]; let cap = base[1];

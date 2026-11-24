@@ -18,6 +18,9 @@ button, select, input { font-family: inherit; font-size: calc(13px * var(--fs));
 .navg { position: relative; } .navg .caret { font-size: 0.8em; opacity: 0.8; }
 .navdd { display: none; position: absolute; left: 0; top: 100%; z-index: 60; min-width: 190px; background: var(--navy2); border: 1px solid #456; border-radius: 0 4px 4px 4px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); padding: 4px; }
 .navg:hover .navdd, .navg.open .navdd { display: block; }
+.fieldwrap .rain { animation: rainfall 0.5s linear infinite; } @keyframes rainfall { from { transform: translate(0, -14px); } to { transform: translate(-4px, 0); } }
+.fieldwrap .spark { animation: spark 0.6s ease-out infinite; opacity: 0; } @keyframes spark { 0% { opacity: 0; } 15% { opacity: 1; } 60% { opacity: 0; } 100% { opacity: 0; } }
+.fieldwrap .wind line, .fieldwrap .wind polygon { animation: gust 1.6s ease-in-out infinite; } @keyframes gust { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 .navitem { display: block; width: 100%; text-align: left; background: none; border: none; color: #fff; padding: 8px 14px; cursor: pointer; font-size: calc(14px * var(--fs)); border-radius: 3px; }
 .navitem:hover { background: #456; } .navitem.on { background: var(--cream); color: var(--navy); font-weight: bold; }
 body.dark .navdd { background: #1c2a44; border-color: #2a3a58; } body.dark .navitem.on { background: #ffcc00; color: #111; }

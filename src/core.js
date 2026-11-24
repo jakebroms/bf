@@ -127,7 +127,7 @@ function newGame() {
     boxBat: [], boxPit: [], log: [], pa: [], longHR: null,
     pend: null, misses: 0,
     dice: null, loc: null, rollTxt: '', playTxt: '', extra: '',
-    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '', intro: 0, att: 0, gate: 0, attNote: '', dh: 0, time: '', rainNote: '',
+    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '', intro: 0, att: 0, gate: 0, attNote: '', dh: 0, time: '', rainNote: '', night: false, sky: '',
   };
 }
 
