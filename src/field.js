@@ -1,7 +1,7 @@
 /* field.js: the ballpark drawn to scale from its fence distances (field units 600 x 420, home plate at y = HOMEY) */
 'use strict';
 const IN_SC = 1.45, HOMEY = 30;
-function pkScale() { const cf = fenceDist(8); let s = (388 - 130 * IN_SC) / (cf - 130); return s > 0.85 ? 0.85 : s; }
+function pkScale() { const cf = fenceDist(8); let s = (350 - 130 * IN_SC) / (cf - 130); return s > 0.78 ? 0.78 : s; }
 function RU(ft) { return ft <= 130 ? ft * IN_SC : 130 * IN_SC + (ft - 130) * pkScale(); }
 function fenceAt(th) {
   th = clamp(th, 45, 135); const cf = fenceDist(8), ln = th < 90 ? fenceDist(9) : fenceDist(7);
@@ -86,7 +86,8 @@ function skyPhase() {
   if (gParkOverride || !G.night) return 'day';
   return G.inn <= 2 && !G.over ? 'dusk' : 'night';
 }
-let gParkCache = { key: '', svg: null };
+let gParkCache = { key: '', svg: null }, gViewX = 0;
+const VB_Y = -72, VB_H = 500;   // the picture starts above the park so the upper deck beyond centre field is in it
 // the stands follow the shape of the field: a strip of foul ground along each line, the backstop behind the plate, the fence arc
 function boundaryPts(Wf) {
   const pts = []; const push = (x, y, nx, ny) => pts.push([x, y, nx, ny]);
@@ -104,7 +105,7 @@ function parkSVG() {
   const park = gParkOverride || parkName(), look = parkLook(park), att = gParkOverride ? 0.6 : (G.att ? crowdSize() : G.dh === 2 ? 0.55 : 0.5);
   const phase = skyPhase(), w = gParkOverride ? null : G.weather;
   const wxKey = w ? w.dir + w.mph + ',' + w.temp + (G.sky || '') : '';
-  const key = [park, att.toFixed(2), phase, wxKey, G.gameNo, G.inn, G.teams.join()].join('|');
+  const key = [park, att.toFixed(2), phase, wxKey, G.gameNo, G.inn, G.teams.join(), gViewX].join('|');
   if (gParkCache.key === key) return gParkCache.svg;
   const pts = []; for (let i = 0; i <= 36; i++) { const th = 45 + i * 2.5; const [x, y] = polarXY(fenceAt(th), th); pts.push(x.toFixed(1) + ',' + FY(y).toFixed(1)); }
   const fair = '300,' + FY(HOMEY) + ' ' + pts.join(' ') + ' 300,' + FY(HOMEY);
@@ -134,8 +135,8 @@ function parkSVG() {
   // ---- the stands: concrete outside, upper deck, concourse, lower bowl, seat rows, aisles, the crowd ----
   const B = boundaryPts(22);
   const seatDark = look.seats, seatLite = shade(look.seats, 1.25);
-  s += `<rect x="0" y="0" width="600" height="428" fill="#55554f"/>`;
-  s += `<polygon points="${bandPoly(B, 126, 400)}" fill="#55554f"/><polygon points="${bandPoly(B, 120, 126)}" fill="#8f8d85"/><polygon points="${bandPoly(B, 40, 120)}" fill="${seatDark}"/>`;
+  s += `<rect x="-900" y="-300" width="2400" height="1000" fill="#55554f"/>`;
+  s += `<polygon points="${bandPoly(B, 126, 900)}" fill="#55554f"/><polygon points="${bandPoly(B, 120, 126)}" fill="#8f8d85"/><polygon points="${bandPoly(B, 40, 120)}" fill="${seatDark}"/>`;
   s += `<polygon points="${bandPoly(B, 0, 40)}" fill="${seatLite}"/>`;
   for (let k = 4; k < 120; k += 4) if (k !== 36 && k !== 40) s += `<polyline points="${offPoly(B, k)}" fill="none" stroke="#000" stroke-opacity="${k < 40 ? 0.13 : 0.18}" stroke-width="1"/>`;
   s += `<polygon points="${bandPoly(B, 35, 40)}" fill="#b9b6ac"/>`;
@@ -148,7 +149,7 @@ function parkSVG() {
   s += `<polygon points="${offPoly(B, 0)}" fill="${grassB}"/>`;
   s += `<polygon points="${fair}" fill="url(#turf)"/>`;
   if (!look.turf) { for (let r = 1; r < 14; r++) { const ring = []; for (let i = 0; i <= 36; i++) { const th = 45 + i * 2.5; const ft = 128 + (fenceAt(th) - 128) * (r / 14); const [x, y] = polarXY(ft, th); ring.push(x.toFixed(1) + ',' + FY(y).toFixed(1)); } if (r % 2) s += `<polyline points="${ring.join(' ')}" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="${(RU(fenceAt(90)) - RU(128)) / 14 * 0.95}" clip-path="url(#fairclip)"/>`; } }
-  else { for (let x = 40; x < 600; x += 26) s += `<line x1="${x}" y1="0" x2="${x}" y2="428" stroke="#fff" stroke-opacity="0.05" stroke-width="13" clip-path="url(#fairclip)"/>`; }
+  else { for (let x = -400; x < 1000; x += 26) s += `<line x1="${x}" y1="-80" x2="${x}" y2="428" stroke="#fff" stroke-opacity="0.05" stroke-width="13" clip-path="url(#fairclip)"/>`; }
   // warning track and the wall
   s += `<polygon points="${pts.join(' ')} ${track.slice().reverse().join(' ')}" fill="${trackC}" fill-opacity="0.9"/>`;
   s += `<polyline points="${pts.join(' ')}" fill="none" stroke="${look.wall}" stroke-width="4" filter="url(#wallshade)"/>`;
@@ -192,14 +193,14 @@ function parkSVG() {
   for (const th of [40.5, 139.5]) { for (const ft of [205, 222]) { const [x, y] = polarXY(ft, th); s += `<circle cx="${x.toFixed(1)}" cy="${FY(y).toFixed(1)}" r="4" fill="${dirtC}" stroke="#000" stroke-opacity="0.15"/>`; } const [hx, hy] = polarXY(238, th); s += `<rect x="${(hx - 2).toFixed(1)}" y="${(FY(hy) - 2).toFixed(1)}" width="4" height="4" fill="#fff"/>`; }
   [[129, 7], [90, 8], [51, 9]].forEach(([th, f]) => { const [x, y] = polarXY(fenceAt(th) - 22, th); s += `<text x="${x.toFixed(1)}" y="${(FY(y) + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="bold" fill="#fff" stroke="#000" stroke-width="0.5" paint-order="stroke" font-family="Arial">${fenceDist(f)}</text>`; });
   // ---- the sky: dusk, night with the lights on, rain, a dome ----
-  if (dusk) s += `<rect x="0" y="0" width="600" height="428" fill="#ff9a3c" fill-opacity="0.13" pointer-events="none"/>`;
+  if (dusk) s += `<rect x="-700" y="-100" width="2000" height="700" fill="#ff9a3c" fill-opacity="0.13" pointer-events="none"/>`;
   if (night) {
-    s += `<rect x="0" y="0" width="600" height="428" fill="#0b1a3a" fill-opacity="0.42" pointer-events="none"/>`;
+    s += `<rect x="-700" y="-100" width="2000" height="700" fill="#0b1a3a" fill-opacity="0.42" pointer-events="none"/>`;
     for (const [lx, ly] of [[40, 40], [560, 40], [12, 300], [588, 300], [300, -10]]) s += `<circle cx="${lx}" cy="${ly}" r="190" fill="url(#lamp)" pointer-events="none"/><g transform="translate(${lx} ${ly})"><rect x="-7" y="-5" width="14" height="10" rx="2" fill="#ddd" stroke="#555" stroke-width="0.8"/><rect x="-5" y="-3" width="10" height="6" fill="#fff6c0"/></g>`;
   }
-  if (dome) s += `<path d="M0 0 L600 0 L600 428 L0 428 Z M14 14 L586 14 L586 414 L14 414 Z" fill="#5b6270" fill-rule="evenodd"/><rect x="0" y="0" width="600" height="428" fill="#dfe6f0" fill-opacity="0.08" pointer-events="none"/>`;
-  if (w && w.dir === 'Rain') s += `<rect class="rain" x="-20" y="-20" width="640" height="470" fill="url(#rainp)" pointer-events="none"/><rect x="0" y="0" width="600" height="428" fill="#334" fill-opacity="0.12" pointer-events="none"/>`;
-  else if (G.sky === 'cloudy' && !dome && !night && !gParkOverride) s += `<rect x="0" y="0" width="600" height="428" fill="#8a94a6" fill-opacity="0.12" pointer-events="none"/>`;
+  if (dome) s += `<polygon points="${bandPoly(B, 118, 900)}" fill="#8a919c"/><polyline points="${offPoly(B, 118)}" fill="none" stroke="#dfe6f0" stroke-width="3" stroke-opacity="0.8"/><rect x="-700" y="-100" width="2000" height="700" fill="#dfe6f0" fill-opacity="0.08" pointer-events="none"/>`;
+  if (w && w.dir === 'Rain') s += `<rect class="rain" x="-720" y="-120" width="2040" height="740" fill="url(#rainp)" pointer-events="none"/><rect x="-700" y="-100" width="2000" height="700" fill="#334" fill-opacity="0.12" pointer-events="none"/>`;
+  else if (G.sky === 'cloudy' && !dome && !night && !gParkOverride) s += `<rect x="-700" y="-100" width="2000" height="700" fill="#8a94a6" fill-opacity="0.12" pointer-events="none"/>`;
   // the wind, shown in the left-center gap
   if (w && w.mph >= 5 && w.dir !== 'Dome' && w.dir !== 'Rain') {
     const ang = { 'Out to left': -135, 'Out to center': -90, 'Out to right': -45, 'In': 90, 'Across': 0 }[w.dir]; if (ang != null) {
@@ -211,9 +212,9 @@ function parkSVG() {
   if (!gParkOverride && (w || dome)) {
     const icon = dome ? '🏟' : w.dir === 'Rain' ? '🌧' : night ? '🌙' : dusk ? '🌆' : G.sky === 'cloudy' ? '☁' : '☀';
     const tip = (dome ? 'Indoors, 72°' : windText()) + (dome ? '' : G.night ? ' · night game' : G.dayNo ? ' · day game' : '') + (G.att ? ' · attendance ' + fmtNum(G.att) + (G.attNote ? ' (' + G.attNote + ')' : '') : '');
-    s += `<g class="wxbadge"><title>${esc(tip)}</title><circle cx="16" cy="16" r="11" fill="#000" fill-opacity="0.45"/><text x="16" y="21" text-anchor="middle" font-size="13" font-family="Arial">${icon}</text>${w && !dome ? `<text x="31" y="20" font-size="9" font-weight="bold" fill="#fff" stroke="#000" stroke-width="0.5" paint-order="stroke" font-family="Arial">${w.temp}°</text>` : ''}</g>`;
+    s += `<g class="wxbadge" transform="translate(${gViewX} ${VB_Y})"><title>${esc(tip)}</title><circle cx="16" cy="16" r="11" fill="#000" fill-opacity="0.45"/><text x="16" y="21" text-anchor="middle" font-size="13" font-family="Arial">${icon}</text>${w && !dome ? `<text x="31" y="20" font-size="9" font-weight="bold" fill="#fff" stroke="#000" stroke-width="0.5" paint-order="stroke" font-family="Arial">${w.temp}°</text>` : ''}</g>`;
   }
-  s += `<text x="8" y="422" font-size="10" fill="#fff" font-family="Arial" font-weight="bold" stroke="#000" stroke-width="0.6" paint-order="stroke">${esc(park)}${G.att && !gParkOverride ? ' · ' + fmtNum(G.att) : ''}</text>`;
+  s += `<text x="${gViewX + 8}" y="417" font-size="10" fill="#fff" font-family="Arial" font-weight="bold" stroke="#000" stroke-width="0.6" paint-order="stroke">${esc(park)}${G.att && !gParkOverride ? ' · ' + fmtNum(G.att) : ''}</text>`;
   // camera flashes in the seats after a big moment at night
   if (night && gSpark > Date.now()) { const r2 = mulberry(Date.now() & 0xffff); for (let i = 0; i < 26; i++) { const p = B[Math.floor(r2() * B.length)]; const k = 3 + r2() * 30; s += `<circle class="spark" cx="${(p[0] + p[2] * k).toFixed(0)}" cy="${FY(p[1] + p[3] * k).toFixed(0)}" r="2.2" fill="#fff" style="animation-delay:${(r2() * 1.2).toFixed(2)}s"/>`; } }
   const out = { svg: s, bases, b1x, b1y, b2y };
