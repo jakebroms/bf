@@ -305,7 +305,7 @@ async function announceLineups() {
   host.classList.remove('hidden');
   const show = (title, line, sub) => { host.innerHTML = `<div class="pop announce"><div class="pop-title">${esc(title)}</div><div class="ann-line">${esc(line)}</div><div class="ann-sub">${esc(sub || '')}</div><div class="pop-foot">click to skip</div></div>`; host.firstChild.onclick = () => { skipped = true; }; };
   const wait = async ms => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (skipped) return; await new Promise(r => setTimeout(r, 60)); } };
-  sfx('pa', 0, { text: 'Ladies and gentlemen, welcome to ' + parkName() + '.' }); show('LADIES AND GENTLEMEN', 'Welcome to ' + parkName(), windText()); await wait(2600);
+  sfx('pa'); show('LADIES AND GENTLEMEN', 'Welcome to ' + parkName(), windText()); await wait(1600);
   for (let side = 0; side <= 1 && !skipped; side++) {
     const team = teamCode(side); sfx('pa');
     show(side === 0 ? 'THE STARTING LINEUP FOR THE VISITING ' + teamFull(team).toUpperCase() : 'AND NOW, YOUR ' + teamFull(team).toUpperCase(), side === 0 ? 'The ' + nickOf(team) : 'The ' + nickOf(team) + '!', ''); sfx(side === 1 ? 'cheer' : 'murmur', 0.2); await wait(1400);
@@ -314,7 +314,7 @@ async function announceLineups() {
       const posLong = { P: 'the pitcher', C: 'the catcher', '1B': 'the first baseman', '2B': 'the second baseman', '3B': 'the third baseman', SS: 'the shortstop', LF: 'the left fielder', CF: 'the center fielder', RF: 'the right fielder', DH: 'the designated hitter' }[ps] || ps;
       const star = r && (num(r[B.HR]) >= 20 || num(r[B.H]) / Math.max(1, num(r[B.AB])) >= 0.3);
       show((side === 0 ? 'VISITORS' : 'HOME') + ' · BATTING ' + ordinal(i).toUpperCase(), (ps === 'P' ? 'And pitching, ' : 'Batting ' + ordinal(i) + ', ' + posLong + ', ') + fullName(id), r ? 'Hit ' + avg3(num(r[B.H]), num(r[B.AB])) + ' with ' + num(r[B.HR]) + ' homers and ' + num(r[B.RBI]) + ' RBI in ' + seasonYr() : '');
-      sfx(side === 1 ? (star ? 'star' : 'name') : 'name', 0.15, { text: (ps === 'P' ? 'And pitching, ' : 'Batting ' + ordinal(i) + ', ' + posLong + ', ') + fullName(id) + '.' }); await wait(star ? 2600 : 2300);
+      sfx(side === 1 ? (star ? 'star' : 'name') : 'murmur', 0.15); await wait(star ? 1500 : 1150);
     }
     if (!skipped) { const pid = curPitcherID(side), pr = pRowOf(pid); show((side === 0 ? 'VISITORS' : 'HOME') + ' · ON THE MOUND', 'And pitching, ' + fullName(pid), pr ? pr[P.W] + '-' + pr[P.L] + ', ' + fmt2(num(pr[P.ERA])) + ' ERA in ' + seasonYr() : ''); sfx(side === 1 ? 'star' : 'murmur', 0.15); await wait(1500); }
   }

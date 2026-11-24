@@ -1,10 +1,10 @@
 /* sound.js: the ballpark, built live with the Web Audio API (no sound files).
    A crowd made of voices (dozens of them, through vowel filters), with applause, whistles and swells that build and fade.
    A bat that rings like ash, a glove that pops like leather, a Hammond-style organ with a songbook, a wall that clangs,
-   fireworks for a walk-off, and a public-address announcer, umpire and beer vendor who use the browser's own voice. */
+   fireworks for a walk-off. */
 'use strict';
 const Snd = {
-  ctx: null, on: true, vol: 0.8, crowd: 0.7, busyUntil: 0, level: 0.1, ambientOn: false, stretchDone: -1, lastOrgan: 0, lastVendor: 0,
+  ctx: null, on: true, vol: 0.8, crowd: 0.7, busyUntil: 0, level: 0.1, ambientOn: false, stretchDone: -1, lastOrgan: 0,
   init() {
     if (this.ctx) return true;
     try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; return false; }
@@ -143,28 +143,7 @@ const Snd = {
   },
   // we will rock you: stomp, stomp, clap (it came out in October 1977)
   rockYou(t, bars) { for (let i = 0; i < bars; i++) { const b = t + i * 1.2; this.stomp(b); this.stomp(b + 0.3); this.clap(b + 0.6, 0.45); } },
-  letsGo(t, nick) { this.organ(t, this.MELODY.letsGo, 150, 0.1); this.clap(t + 1.0, 0.3); this.clap(t + 1.2, 0.3); this.clap(t + 1.4, 0.3); this.say('Let\'s go ' + nick + '!', 'crowd'); },
-  // ---- the voices: public address, umpire, vendor ----
-  // the browser's voices, best first: the natural ones modern browsers ship (but never pick by default) go to the top
-  voices() {
-    if (typeof speechSynthesis === 'undefined') return [];
-    const score = v => (/natural|online|premium|enhanced|neural/i.test(v.name) ? 100 : 0) + (/google/i.test(v.name) ? 50 : 0) + (/en[-_]US/i.test(v.lang) ? 20 : /^en/i.test(v.lang) ? 10 : -50) + (/\b(alex|samantha|daniel|tom|aaron|guy|christopher|eric|andrew|brian|ryan|evan|davis|jason)\b/i.test(v.name) ? 30 : 0) + (/desktop|zira|espeak|compact/i.test(v.name) ? -40 : 0);
-    return speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)).map(v => ({ v, s: score(v) })).sort((a, b) => b.s - a.s).map(x => x.v);
-  },
-  pickVoice() { const vs = this.voices(); let want = ''; try { want = typeof opt === 'function' ? opt('Voice') : ''; } catch (e) {} if (want && want !== 'Automatic') { const f = vs.find(v => v.name === want); if (f) return f; } return vs[0] || null; },
-  say(text, who, force) {
-    if ((!force && !this.enabled()) || typeof speechSynthesis === 'undefined' || !text) return;
-    try { const m = typeof opt === 'function' ? opt('Announcer voice') : 'Big moments'; if (!force && (m === 'Off' || (who === 'batter' && m !== 'Every batter'))) return; } catch (e) { return; }
-    if (who === 'batter') who = 'pa';
-    try {
-      if (who !== 'crowd') speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      const pick = this.pickVoice(); if (pick) u.voice = pick;
-      const P = { pa: [1, 0.95, 1], ump: [0.8, 1.1, 1], vendor: [1.1, 1.05, 0.7], crowd: [1, 1, 0.8] }[who] || [1, 1, 1];
-      u.pitch = P[0]; u.rate = P[1]; u.volume = P[2] * this.vol;
-      speechSynthesis.speak(u);
-    } catch (e) {}
-  },
+  letsGo(t) { this.organ(t, this.MELODY.letsGo, 150, 0.1); this.clap(t + 1.0, 0.3); this.clap(t + 1.2, 0.3); this.clap(t + 1.4, 0.3); },
   // ---- the ambient crowd bed: voices that never quite stop, a little applause now and then ----
   ambient(on) {
     if (!this.init()) return; const c = this.ctx;
@@ -180,7 +159,7 @@ const Snd = {
   },
   setLevel(x) { this.level = clamp(x, 0, 0.25); if (this.ambientOn && this.ambGain) this.ambGain.gain.setTargetAtTime(this.on ? this.level : 0.0001, this.ctx.currentTime, 1.2); },
   // ---- events ----
-  // o = { home: true when the good thing happened for the home team, big: a bigger moment, nick: the home nickname, name: a player }
+  // o = { home: true when the good thing happened for the home team, big: a bigger moment }
   play(name, delay, o) {
     if (!this.enabled() || !this.init()) return; this.resume(); o = o || {};
     const now = this.ctx.currentTime; let t = Math.max(now + (delay || 0), this.busyUntil);
@@ -189,7 +168,6 @@ const Snd = {
   },
   make(name, t, o) {
     const home = !!o.home, react = home ? 1 : 0.4, M = this.MELODY;    // the home crowd roars; a visitor's good moment gets a polite murmur
-    const VEND = ['Cold beer here! Ice cold beer!', 'Peanuts! Popcorn! Cracker Jack!', 'Hot dogs! Get your hot dogs!', 'Scorecards! You can\'t tell the players without a scorecard!', 'Programs! Get your programs here!', 'Ice cream! Ice cold ice cream!'];
     switch (name) {
       case 'dice': for (let i = 0; i < 9; i++) { const s = t + i * 0.05 + Math.random() * 0.03; this.ring(s, [[900 + Math.random() * 600, 8, 0.8], [2400 + Math.random() * 1500, 6, 0.5]], 0.7); } this.ring(t + 0.52, [[1400, 10, 0.9], [3200, 8, 0.5]], 0.9); this.ring(t + 0.6, [[1200, 10, 0.9], [2900, 8, 0.5]], 0.7); return 0.7;
       case 'click': this.ring(t, [[1800, 6, 0.6], [3600, 5, 0.3]], 0.5); return 0.05;
@@ -203,33 +181,33 @@ const Snd = {
       case 'out': this.pop(t, 1); this.cheer(t + 0.25, 1.1, 0.22 * (home ? 1 : 0.45), false); return 0.6;
       case 'groundout': this.crack(t, 0.7, 0.5); this.roll(t + 0.1, 0.4); this.pop(t + 0.75, 1); this.cheer(t + 0.95, 1.1, 0.22 * (home ? 1 : 0.45), false); return 1.3;
       case 'flyout': this.crack(t, 0.8, 0.6); this.pop(t + 1.1, 0.9); this.cheer(t + 1.25, 1, 0.2 * (home ? 1 : 0.45), false); return 1.5;
-      case 'dp': this.crack(t, 0.75, 0.5); this.pop(t + 0.55, 1); this.pop(t + 0.85, 1.1); this.cheer(t + 1.0, home ? 2.4 : 1.2, home ? 0.6 : 0.2, home); if (home) this.say('Two!', 'ump'); return 1.8;
-      case 'strikeout': this.noise(t, 0.14, { type: 'bandpass', freq: 400, q: 1.5, gain: 0.3, sweepTo: 3000, white: true, out: this.dry }); this.pop(t + 0.16, 1.15); this.cheer(t + 0.45, home ? 2 : 0.9, home ? 0.5 : 0.15, false); this.say(Math.random() < 0.5 ? 'Strike three!' : 'Steerike three!', 'ump'); return 1.2;
-      case 'walk': this.murmur(t, 0.4); if (!home) this.boo(t + 0.2, 0.28); this.say('Ball four.', 'ump'); return 0.9;
+      case 'dp': this.crack(t, 0.75, 0.5); this.pop(t + 0.55, 1); this.pop(t + 0.85, 1.1); this.cheer(t + 1.0, home ? 2.4 : 1.2, home ? 0.6 : 0.2, home); if (home) return 1.8;
+      case 'strikeout': this.noise(t, 0.14, { type: 'bandpass', freq: 400, q: 1.5, gain: 0.3, sweepTo: 3000, white: true, out: this.dry }); this.pop(t + 0.16, 1.15); this.cheer(t + 0.45, home ? 2 : 0.9, home ? 0.5 : 0.15, false); return 1.2;
+      case 'walk': this.murmur(t, 0.4); if (!home) this.boo(t + 0.2, 0.28); return 0.9;
       case 'hbp': this.noise(t, 0.04, { type: 'lowpass', freq: 500, gain: 0.7, attack: 0.001, white: true, out: this.dry }); this.ooh(t + 0.1, 0.4); this.groan(t + 0.6, 0.25); return 1.2;
       case 'error': this.pop(t, 0.5); this.roll(t + 0.1, 0.3); if (home) this.cheer(t + 0.3, 1.4, 0.3, false); else { this.groan(t + 0.2, 0.4); this.boo(t + 0.8, 0.35); } return 1.3;
-      case 'safe': this.slide(t); this.cheer(t + 0.3, 1.8, (o.big ? 0.7 : 0.45) * react, home || o.big); this.say('Safe!', 'ump'); return 1.1;
-      case 'caught': this.slide(t); this.pop(t + 0.28, 1); this.cheer(t + 0.45, 1.3, home ? 0.45 : 0.15, false); this.say(Math.random() < 0.5 ? 'Out!' : 'You\'re out!', 'ump'); return 1;
-      case 'inning': { const r = [M.riff1, M.riff2, M.riff3, M.hatDance, M.tequila, M.hava, M.chaChaCha][Math.floor(Math.random() * 7)]; this.organ(t + 0.2, r, 150, 0.1); this.murmur(t, 0.15); if (Date.now() - this.lastVendor > 60000 && Math.random() < 0.45) { this.lastVendor = Date.now(); setTimeout(() => this.say(VEND[Math.floor(Math.random() * VEND.length)], 'vendor'), 2500); } return 1.8; }
-      case 'stretch': this.say('Ladies and gentlemen, please rise for the seventh-inning stretch.', 'pa'); this.organ(t + 3.2, M.takeMeOut, 140, 0.11); this.cheer(t + 3.2 + 17.5, 3, 0.45, true); return 3;
+      case 'safe': this.slide(t); this.cheer(t + 0.3, 1.8, (o.big ? 0.7 : 0.45) * react, home || o.big); return 1.1;
+      case 'caught': this.slide(t); this.pop(t + 0.28, 1); this.cheer(t + 0.45, 1.3, home ? 0.45 : 0.15, false); return 1;
+      case 'inning': { const r = [M.riff1, M.riff2, M.riff3, M.hatDance, M.tequila, M.hava, M.chaChaCha][Math.floor(Math.random() * 7)]; this.organ(t + 0.2, r, 150, 0.1); this.murmur(t, 0.15); return 1.8; }
+      case 'stretch': this.organ(t + 3.2, M.takeMeOut, 140, 0.11); this.cheer(t + 3.2 + 17.5, 3, 0.45, true); return 3;
       case 'charge': this.organ(t, M.charge, 175, 0.12); this.cheer(t + 2.1, 1.6, 0.45, true); return 2.2;
       case 'rally': if (Math.random() < 0.5) this.organ(t, M.rally, 160, 0.09); else this.rockYou(t, 3); return 2;
-      case 'letsgo': this.letsGo(t, o.nick || 'home team'); return 2;
-      case 'final': this.cheer(t, home ? 4.5 : 2, home ? 0.85 : 0.35, home); if (home) { this.organ(t + 0.8, M.fanfare, 130, 0.13); this.organ(t + 4.2, M.nanaHey, 150, 0.1); } else this.organ(t + 1, M.riff3, 150, 0.09); setTimeout(() => this.say('Thank you for coming, fans. Please drive home safely.', 'pa'), home ? 9000 : 5000); return 3;
+      case 'letsgo': this.letsGo(t); return 2;
+      case 'final': this.cheer(t, home ? 4.5 : 2, home ? 0.85 : 0.35, home); if (home) { this.organ(t + 0.8, M.fanfare, 130, 0.13); this.organ(t + 4.2, M.nanaHey, 150, 0.1); } else this.organ(t + 1, M.riff3, 150, 0.09); return 3;
       case 'walkoff': this.ooh(t, 0.5); this.cheer(t + 0.6, 7, 1, true); this.fireworks(t + 1.2, 5); this.organ(t + 1.0, M.charge, 180, 0.14); this.organ(t + 4.0, M.fanfare, 140, 0.13); this.organ(t + 8.0, M.nanaHey, 150, 0.1); return 4;
       case 'warmup': for (let i = 0; i < 3; i++) this.pop(t + i * 0.45, 0.7); this.murmur(t, 0.12); return 1.4;
-      case 'playball': this.organ(t, M.fanfare, 140, 0.12); this.cheer(t + 1.2, 2.6, 0.5, true); setTimeout(() => this.say('Play ball!', 'ump'), 1600); return 2.6;
-      case 'batter': { const r = [M.walkup1, M.walkup2, M.walkup3][Math.floor(Math.random() * 3)]; if (home && Math.random() < 0.5) this.organ(t, r, 170, 0.06); if (o.name) this.say('Now batting, ' + o.name + '.', 'batter'); return 0.3; }
-      case 'pa': this.tone(t, 0.35, 660, { type: 'sine', gain: 0.1 }); this.tone(t + 0.3, 0.6, 880, { type: 'sine', gain: 0.1 }); if (o.text) setTimeout(() => this.say(o.text, 'pa'), 600); return 0.9;
-      case 'name': this.cheer(t, 0.9, 0.25, false); if (o.text) this.say(o.text, 'pa'); return 0.4;
-      case 'star': this.cheer(t, 1.8, 0.5, true); if (o.text) this.say(o.text, 'pa'); return 0.6;
+      case 'playball': this.organ(t, M.fanfare, 140, 0.12); this.cheer(t + 1.2, 2.6, 0.5, true); return 2.6;
+      case 'batter': { const r = [M.walkup1, M.walkup2, M.walkup3][Math.floor(Math.random() * 3)]; if (home && Math.random() < 0.5) this.organ(t, r, 170, 0.06); if (o.name) return 0.3; }
+      case 'pa': this.tone(t, 0.35, 660, { type: 'sine', gain: 0.1 }); this.tone(t + 0.3, 0.6, 880, { type: 'sine', gain: 0.1 }); return 0.9;
+      case 'name': this.cheer(t, 0.9, 0.25, false); if (o.text) return 0.4;
+      case 'star': this.cheer(t, 1.8, 0.5, true); if (o.text) return 0.6;
       case 'cheer': this.cheer(t, 1.8, 0.45, true); return 0.8;
       case 'murmur': this.murmur(t, 0.2); return 0.4;
       case 'tension': this.clap(t, 0.15); this.clap(t + 0.5, 0.15); this.clap(t + 1, 0.18); this.clap(t + 1.5, 0.2); return 0.5;
     }
     return 0;
   },
-  toggle() { this.on = !this.on; try { localStorage.setItem('BF5_sound', this.on ? '1' : '0'); } catch (e) {} if (this.on) { this.play('click'); this.ambient(true); } else { if (this.ambientOn) this.ambient(false); try { speechSynthesis.cancel(); } catch (e) {} } },
-  load() { try { this.on = localStorage.getItem('BF5_sound') !== '0'; const v = parseFloat(localStorage.getItem('BF5_vol')); if (!isNaN(v)) this.vol = v; } catch (e) {} try { if (typeof speechSynthesis !== 'undefined') { speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged', () => { if (typeof curScreen !== 'undefined' && curScreen === 'options' && typeof UI !== 'undefined') UI.refresh(); }); } } catch (e) {} },
+  toggle() { this.on = !this.on; try { localStorage.setItem('BF5_sound', this.on ? '1' : '0'); } catch (e) {} if (this.on) { this.play('click'); this.ambient(true); } else if (this.ambientOn) this.ambient(false); },
+  load() { try { this.on = localStorage.getItem('BF5_sound') !== '0'; const v = parseFloat(localStorage.getItem('BF5_vol')); if (!isNaN(v)) this.vol = v; } catch (e) {} },
 };
 const sfx = (name, delay, o) => { if (/homer|walkoff|final|score|triple/.test(name) && typeof gSpark !== 'undefined') gSpark = Date.now() + 2600; return Snd.play(name, delay, o); };

@@ -60,8 +60,6 @@ function friendlyCode(t) { return ({ NYA:'NYY', NYN:'NYM', LAN:'LAD', SLN:'STL',
 // ---- options ----
 const OPTION_DEFS = D.options.map(o => ({ name: o[0], def: String(o[1]), help: o[2] || '' }));
 OPTION_DEFS.push({ name: 'Ballpark look', def: 'Classic', help: 'Classic: the plain board-game field. Stadium: stands with a crowd sized to the gate, day and night lighting, rain and wind on the field, and each park\'s own look (turf, the Green Monster, the fountains).' });
-OPTION_DEFS.push({ name: 'Announcer voice', def: 'Big moments', help: 'Big moments: the public-address man welcomes you, reads the lineups and calls the stretch, the umpire calls strike three, ball four, safe and out, and a vendor works the aisles between innings. Every batter: he also announces each hitter. Off: sounds only.' });
-OPTION_DEFS.push({ name: 'Voice', def: 'Automatic', help: 'Which of the voices built into this browser does the talking. Automatic picks the most natural one it can find. Click Hear it to try one; the natural-sounding ones are usually marked Natural, Online or Google.' });
 OPTION_DEFS.push({ name: 'Rainouts', def: 'On', help: 'On: a few outdoor games a season get rained out and are made up as part of a doubleheader the next time the clubs meet there. Off: every game is played as scheduled.' });
 OPTION_DEFS.push({ name: 'Lineup announcements', def: 'On', help: 'On: before each game the public-address announcer reads both starting lineups over the organ and the crowd (click to skip). Off: straight to the warm-up tosses.' });
 const OPTION_CHOICES = {
@@ -80,8 +78,6 @@ const OPTION_CHOICES = {
   'DH rule': ["Home team's league", 'Always', 'Never'],
   'Lineup announcements': ['On', 'Off'],
   'Rainouts': ['On', 'Off'],
-  'Announcer voice': ['Big moments', 'Every batter', 'Off'],
-  'Voice': ['Automatic'],
   'Ballpark look': ['Classic', 'Stadium'],
 };
 let O = {};
@@ -632,7 +628,6 @@ function loadAll() {
     if (raw) {
       const o = JSON.parse(raw);
       if (o.O) Object.assign(O, o.O);
-      if (O && O['Announcer voice'] === 'On') O['Announcer voice'] = 'Big moments';
       if (o.S) { S = Object.assign(newSeason(), o.S); if (!S.logAll) S.logAll = {}; if (!S.records) S.records = {}; if (!S.notes) S.notes = {}; if (!S.papers) S.papers = {}; if (!S.raceLog) S.raceLog = []; if (!S.weekly) S.weekly = {}; if (!S.weeklyP) S.weeklyP = {}; if (!S.awards) S.awards = {}; if (!S.gate) S.gate = {}; if (!S.ppd) S.ppd = {}; if (!S.rainouts) S.rainouts = []; }
       if (o.G) { G = Object.assign(newGame(), o.G); }
     }
