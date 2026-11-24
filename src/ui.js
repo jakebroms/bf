@@ -15,22 +15,29 @@ try { const v = JSON.parse(localStorage.getItem('BF5_view') || 'null'); if (v) V
 function saveView() { try { localStorage.setItem('BF5_view', JSON.stringify(VIEW)); } catch (e) {} }
 Actions.setView = (k, v) => { VIEW[k] = v; saveView(); UI.refresh(); };
 Actions.viewPreset = p => { VIEW = Object.assign({}, VIEW_PRESETS[p]); saveView(); UI.refresh(); };
-Actions.viewMenu = () => {
-  const m = $('modal'); m.classList.remove('hidden');
-  const chk = (k, label, help) => `<label class="vrow"><input type="checkbox" ${VIEW[k] ? 'checked' : ''} onchange="Actions.setView('${k}',this.checked)"> <b>${label}</b> <span class="small">${help}</span></label>`;
-  m.innerHTML = `<div class="dlg"><div class="dlg-title">VIEW · what is on the game screen</div><div class="dlg-body">
-    <div class="small" style="margin-bottom:6px">Pick a preset, then fine-tune. Your choice is remembered.</div>
-    <div class="btnrow"><button class="btn" onclick="Actions.viewPreset('everything')">Everything</button><button class="btn" onclick="Actions.viewPreset('simple')">Simple</button><button class="btn" onclick="Actions.viewPreset('scorekeeper')">Scorekeeper</button><button class="btn" onclick="Actions.viewPreset('boardgame')">Board game</button></div>
-    ${chk('cards', 'Player cards', 'the batter and pitcher cards with their roll ranges')}
-    ${chk('cardsIn', 'Cards on the field', 'the two cards sit inside the field box, either side of the diamond, and the field gets bigger')}
-    ${chk('lineups', 'Lineups', 'both batting orders with the dropdowns, Staff buttons and stamina bars')}
-    ${chk('pbp', 'Play-by-play', 'the last plays, newest first')}
-    ${chk('settings', 'Defense and settings', 'infield, outfield, pitch around, injuries')}
-    ${chk('scout', 'Scouting report', 'notes on the batter, pitcher and runners')}
-    <div class="vrow"><b>Field size</b> ${['small', 'medium', 'large'].map(f => `<label><input type="radio" name="fsz" ${VIEW.field === f ? 'checked' : ''} onchange="Actions.setView('field','${f}')"> ${f}</label>`).join(' ')}</div>
-    <div class="small" style="margin-top:8px">Simple: a big field, the yellow button, the dice, the manager moves, the lineups and the play-by-play. Board game: the field and the two cards, nothing else. Scorekeeper: a small field with room for the lineups and the play-by-play.</div>
-  </div><div class="dlg-btns"><button class="btn go" onclick="document.getElementById('modal').classList.add('hidden');document.getElementById('modal').innerHTML=''">Done</button></div></div>`;
-};
+let defOpen = false;
+Actions.viewMenu = () => { VIEW.bar = !VIEW.bar; saveView(); UI.refresh(); };
+Actions.toggleDef = () => { defOpen = !defOpen; UI.refresh(); };
+// a slim strip under the header: presets, what is on the screen, the field size, and the defense pop-over
+function viewBarHtml() {
+  if (VIEW.bar === false) return '';
+  const chip = (k, label, title) => `<button class="vchip${VIEW[k] ? ' on' : ''}" onclick="Actions.setView('${k}',${!VIEW[k]})" title="${esc(title)}">${label}</button>`;
+  const pre = (p, label) => { const cur = Object.keys(VIEW_PRESETS[p]).every(k => VIEW[k] === VIEW_PRESETS[p][k]); return `<button class="vchip pre${cur ? ' on' : ''}" onclick="Actions.viewPreset('${p}')">${label}</button>`; };
+  return `<div class="viewbar"><span class="vlab">VIEW</span>${pre('boardgame', 'Board game')}${pre('simple', 'Simple')}${pre('everything', 'Everything')}${pre('scorekeeper', 'Scorekeeper')}<span class="vsep"></span>
+    ${chip('cards', 'Cards', 'the batter and pitcher cards')}${VIEW.cards ? chip('cardsIn', 'on the field', 'cards inside the field box') : ''}${chip('lineups', 'Lineups', 'both batting orders')}${chip('pbp', 'Play-by-play', 'the last plays')}${chip('scout', 'Scouting', 'notes on the batter, pitcher and runners')}${chip('settings', 'Settings panel', 'defense and settings as a panel')}<span class="vsep"></span>
+    <span class="vlab">FIELD</span>${['small', 'medium', 'large'].map(f => `<button class="vchip${VIEW.field === f ? ' on' : ''}" onclick="Actions.setView('field','${f}')">${f[0].toUpperCase() + f.slice(1)}</button>`).join('')}<span class="vsep"></span>
+    <button class="vchip def${defOpen ? ' on' : ''}${(G.infield && G.infield !== 'No') || (G.ofDepth && G.ofDepth !== 'Normal') || G.pitchAround ? ' set' : ''}" onclick="Actions.toggleDef()" title="Infield, outfield, pitch around, injuries">⚙ Defense ${defOpen ? '▴' : '▾'}</button>
+    <button class="vchip x" onclick="Actions.viewMenu()" title="Hide this strip (the View button brings it back)">✕</button>
+    ${defOpen ? `<div class="defpop">${settingsPanelHtml()}</div>` : ''}</div>`;
+}
+function settingsPanelHtml() {
+  return `<div class="ph">DEFENSE AND SETTINGS</div>
+    <label title="Infield in: a grounder is more likely to be cut off at the plate, but more get through">Infield <select onchange="Actions.setInfield(this.value)">${['No', 'Corners in', 'Infield in'].map(v => `<option${G.infield === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+    <label title="Deep: fewer doubles but bloopers drop in. Shallow: the reverse">Outfield <select onchange="Actions.setOF(this.value)">${['Normal', 'Deep', 'Shallow'].map(v => `<option${G.ofDepth === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+    <label title="Ball four half the time, careful pitches otherwise">Pitch around this batter <select onchange="Actions.setPitchAround(this.value==='Yes')"><option${!G.pitchAround ? ' selected' : ''}>No</option><option${G.pitchAround ? ' selected' : ''}>Yes</option></select></label>
+    <label>Injuries this game <select onchange="Actions.setInjOff(this.value==='Off')"><option${!G.injuriesOff ? ' selected' : ''}>Use setting</option><option${G.injuriesOff ? ' selected' : ''}>Off</option></select></label>
+    <div class="btnrow"><button class="mini" onclick="Actions.toggleToday()">${luView ? 'Show season stats' : "Show today's stats"}</button><button class="mini" onclick="Actions.saveDefault()" title="Both lineups become each team's saved lineup vs today's starter's hand">Save lineups as default</button></div>`;
+}
 const $ = id => document.getElementById(id);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
@@ -549,23 +556,20 @@ function showGameSummary() {
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
   $('sumNext').onclick = () => { close(); Actions.nextGame(); }; $('sumPaper').onclick = () => { close(); paperPick = 'latest'; Actions.showScreen('paper'); }; $('sumBox').onclick = () => { close(); Actions.showScreen('scorebook'); }; $('sumClose').onclick = close;
 }
+function diamondHtml() {
+  const bs = G.bases;
+  return `<svg class="dia" viewBox="0 0 64 50"><g transform="translate(32 22)">${[[0, -12, bs[1]], [11, -1, bs[0]], [-11, -1, bs[2]]].map(([x, y, on]) => `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" transform="rotate(45 ${x} ${y})" fill="${on ? '#ffcc00' : 'none'}" stroke="${on ? '#b8860b' : '#8a94a6'}" stroke-width="1.8"/>`).join('')}</g>${[0, 1, 2].map(i => `<circle cx="${14 + i * 18}" cy="43" r="4.5" fill="${!G.over && G.outs > i ? '#e03030' : 'none'}" stroke="${!G.over && G.outs > i ? '#a00' : '#8a94a6'}" stroke-width="1.8"/>`).join('')}</svg>`;
+}
 function situationHtml() {
-  const bs = G.bases; const on = [];
-  for (let i = 0; i < 3; i++) if (bs[i]) on.push(['1st', '2nd', '3rd'][i] + ' ' + lastName(bs[i]));
-  const half = G.over ? 'FINAL' : (G.half === 0 ? 'TOP' : 'BOTTOM') + ' of the ' + ordinal(G.inn);
-  const outs = G.over ? '' : ' · ' + G.outs + (G.outs === 1 ? ' OUT' : ' OUTS');
-  const lw = G.over ? ' wins ' : ' leads ';
-  const sc = G.score[0] === G.score[1] ? 'tied ' + G.score[0] + '-' + G.score[1] : (G.score[0] > G.score[1] ? teamCode(0) + lw + G.score[0] + '-' + G.score[1] : teamCode(1) + lw + G.score[1] + '-' + G.score[0]);
-  const run = on.length ? ' · ON BASE: ' + on.join(', ') : ' · bases empty';
+  // one compact line under the title: who is up, who is pitching, with today's and the season's numbers
+  if (G.over) return `<div class="gwho"><span><b>WINNING PITCHER</b> ${esc(G.summary ? G.summary.wp : '')}${G.summary && G.summary.sv ? ' · <b>SAVE</b> ' + esc(G.summary.sv) : ''}</span><span><b>LOSING PITCHER</b> ${esc(G.summary ? G.summary.lp : '')}</span><span class="dim">${G.time ? 'Time ' + esc(G.time) : ''}${G.att ? ' · attendance ' + fmtNum(G.att) : ''}</span></div>`;
   const side = batSideTeam(), bid = slotID(side, G.next[side]), pid = curPitcherID(1 - side);
   const bb = boxBatFind(bid), sb = S.seasonBat[bid]; const today = bb ? bb.H + '-for-' + bb.AB + (bb.HR ? ', ' + bb.HR + ' HR' : '') + (bb.RBI ? ', ' + bb.RBI + ' RBI' : '') : 'first time up';
   const seas = sb ? avg3(replayBat(bid, 'H'), replayBat(bid, 'AB')) + ', ' + replayBat(bid, 'HR') + ' HR, ' + replayBat(bid, 'RBI') + ' RBI' : 'first game';
-  const stk = sb && sb.streak >= 5 ? ' · <b class="hot">' + sb.streak + '-game hitting streak</b>' : '';
+  const stk = sb && sb.streak >= 5 ? ' · <b class="hot">' + sb.streak + '-game streak</b>' : '';
   const pb = boxPitFind(pid); const ptoday = pb ? ipTxt(pb.OUTS) + ' IP, ' + pb.H + ' H, ' + pb.R + ' R, ' + pb.K + ' K' : 'warming up';
-  const who = G.over ? `<div class="who"><span><b>WINNING PITCHER</b> ${esc(G.summary ? G.summary.wp : '')}<br><small class="statline">${G.summary && G.summary.sv ? 'Save: ' + esc(G.summary.sv) : 'Click NEXT GAME to keep the season going'}</small></span><span><b>LOSING PITCHER</b> ${esc(G.summary ? G.summary.lp : '')}<br><small class="statline">${G.time ? 'Time of game ' + esc(G.time) : ''}${G.att ? ' · attendance ' + fmtNum(G.att) : ''}</small></span></div>` : `<div class="who"><span><b>NOW BATTING</b> ${esc(fullName(bid))} <small>${esc(slotPos(side, G.next[side]))}, bats ${handTag(batsOf(bid || 'zzBAT'))}, #${G.next[side]} for ${teamCode(side)}</small><br><small class="statline">Today ${esc(today)} · Season ${esc(seas)}${stk}</small></span><span><b>PITCHING</b> ${esc(fullName(pid))} <small>${throws_(pid)}HP, ${teamCode(1 - side)}</small><br><small class="statline">Today ${esc(ptoday)} · Season ${replayPit(pid, 'W')}-${replayPit(pid, 'L')}, ERA ${replayPit(pid, 'OUTS') > 0 ? fmt2(replayPit(pid, 'ER') * 27 / replayPit(pid, 'OUTS')) : '-.--'}</small></span></div>`;
-  const dia = `<svg class="dia" viewBox="0 0 64 50"><g transform="translate(32 22)">${[[0, -12, bs[1]], [11, -1, bs[0]], [-11, -1, bs[2]]].map(([x, y, on]) => `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" transform="rotate(45 ${x} ${y})" fill="${on ? '#ffcc00' : 'none'}" stroke="${on ? '#ffcc00' : '#9bb'}" stroke-width="1.5"/>`).join('')}</g>${[0, 1, 2].map(i => `<circle cx="${14 + i * 18}" cy="43" r="4" fill="${!G.over && G.outs > i ? '#ff5a5a' : 'none'}" stroke="${!G.over && G.outs > i ? '#ff5a5a' : '#9bb'}" stroke-width="1.5"/>`).join('')}</svg>`;
-  const big = `<div class="sitscore">${G.teams[0] ? tmChip(G.teams[0]) : ''}<b class="${G.score[0] > G.score[1] ? 'up' : ''}">${G.score[0]}</b><span class="dash">–</span><b class="${G.score[1] > G.score[0] ? 'up' : ''}">${G.score[1]}</b>${G.teams[1] ? tmChip(G.teams[1]) : ''}</div>`;
-  return `<div class="situation"><div class="sitleft">${dia}${big}<div class="sit1">${half}${outs}<br><small>${G.over ? sc : run.replace(/^ · /, '')}</small></div></div>${who}</div>`;
+  const on = []; for (let i = 0; i < 3; i++) if (G.bases[i]) on.push(['1st', '2nd', '3rd'][i] + ' ' + lastName(G.bases[i]));
+  return `<div class="gwho"><span><b>AT BAT</b> ${esc(fullName(bid))} <small>${esc(slotPos(side, G.next[side]))}, bats ${handTag(batsOf(bid || 'zzBAT'))}, #${G.next[side]} ${teamCode(side)}</small> <small class="dim">today ${esc(today)} · season ${esc(seas)}${stk}</small></span><span><b>PITCHING</b> ${esc(fullName(pid))} <small>${throws_(pid)}HP</small> <small class="dim">today ${esc(ptoday)} · season ${replayPit(pid, 'W')}-${replayPit(pid, 'L')}, ERA ${replayPit(pid, 'OUTS') > 0 ? fmt2(replayPit(pid, 'ER') * 27 / replayPit(pid, 'OUTS')) : '-.--'}</small></span>${on.length ? `<span><b>ON BASE</b> ${esc(on.join(', '))}</span>` : ''}</div>`;
 }
 function playKind(t) { if (/Home run|homer/i.test(t)) return 'hr'; if (/\b(Single|Double|Triple)\b|singles|doubles|triples/i.test(t)) return 'hit'; if (/Walk|HBP|hit by|walks/i.test(t)) return 'walk'; if (/Strikeout|strikes out|out\b|Double play|flies|grounds|pops|lines|caught/i.test(t)) return 'out'; return ''; }
 function recentPlays() { const L = G.log.filter(l => !l.txt.startsWith('---')).slice(-4, -1).reverse(); if (!L.length) return ''; return `<div class="recent">${L.map(l => `<div>${esc(l.txt)}</div>`).join('')}</div>`; }
@@ -599,8 +603,8 @@ function gameScreen() {
   const luCol = VIEW.lineups && wide; if (luCol) cols.push('minmax(400px, 470px)');
   const sideCol = (VIEW.settings || VIEW.pbp) && xwide; if (sideCol) cols.push('minmax(380px, 460px)');
   root.innerHTML = `
-  <div class="sticky"><div class="gtop"><div class="gtitle">${esc(G.title)}</div>${scoreboardHtml()}</div>
-  ${situationHtml()}</div>
+  <div class="sticky"><div class="gtop"><div class="gleft"><div class="gtitle">${esc(G.title)}</div>${situationHtml()}</div><div class="gright">${diamondHtml()}${scoreboardHtml()}</div></div></div>
+  ${viewBarHtml()}
   <div class="gmain" style="grid-template-columns:${cols.join(' ')}">
     ${VIEW.cards && !cardsIn ? `<div class="col card-col">${cards[0]}</div>` : ''}
     <div class="col mid">
@@ -626,14 +630,7 @@ function gameScreen() {
     ${VIEW.cards && !cardsIn ? `<div class="col card-col">${cards[1]}</div>` : ''}
     ${VIEW.lineups ? `<div class="lucols" style="${luCol ? 'grid-column:auto;grid-template-columns:1fr;gap:6px' : ''}"><div class="lucol">${lineupHtml(0)}${staminaHtml(0)}</div><div class="lucol">${lineupHtml(1)}${staminaHtml(1)}</div></div>` : ''}
     ${VIEW.settings || VIEW.pbp ? `<div class="side" style="${sideCol ? 'grid-column:auto;grid-template-columns:1fr;gap:8px;align-content:start' : VIEW.settings && VIEW.pbp ? '' : 'grid-template-columns:1fr'}">` : ''}
-      ${VIEW.settings ? `<div class="panel"><div class="ph">DEFENSE AND SETTINGS</div>
-        <label title="Infield in: a grounder is more likely to be cut off at the plate, but more get through">Infield <select onchange="Actions.setInfield(this.value)">${['No', 'Corners in', 'Infield in'].map(v => `<option${G.infield === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
-        <label title="Deep: fewer doubles but bloopers drop in. Shallow: the reverse">Outfield <select onchange="Actions.setOF(this.value)">${['Normal', 'Deep', 'Shallow'].map(v => `<option${G.ofDepth === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
-        <label title="Ball four half the time, careful pitches otherwise">Pitch around this batter <select onchange="Actions.setPitchAround(this.value==='Yes')"><option${!G.pitchAround ? ' selected' : ''}>No</option><option${G.pitchAround ? ' selected' : ''}>Yes</option></select></label>
-        <label>Injuries this game <select onchange="Actions.setInjOff(this.value==='Off')"><option${!G.injuriesOff ? ' selected' : ''}>Use setting</option><option${G.injuriesOff ? ' selected' : ''}>Off</option></select></label>
-        <div class="btnrow"><button class="mini" onclick="Actions.toggleToday()">${luView ? 'Show season stats' : "Show today's stats"}</button><button class="mini" onclick="Actions.saveDefault()" title="Both lineups become each team's saved lineup vs today's starter's hand">Save lineups as default</button></div>
-        <div class="small">Lineup tips: change any player or position with the dropdowns (pinch hitters, defensive moves). Click <b>Staff</b> to change pitchers. Before the first pitch, click two slot numbers to swap them.</div>
-      </div>` : ''}
+      ${VIEW.settings ? `<div class="panel">${settingsPanelHtml()}<div class="small">Lineup tips: change any player or position with the dropdowns (pinch hitters, defensive moves). Click <b>Staff</b> to change pitchers. Before the first pitch, click two slot numbers to swap them.</div></div>` : ''}
       ${VIEW.pbp ? `<div class="panel pbp"><div class="ph">PLAY-BY-PLAY</div>${G.log.slice(-16).reverse().map(l => `<div class="${l.txt.startsWith('---') ? 'inn' : ''}">${esc(l.txt)}</div>`).join('')}</div>` : ''}
     ${VIEW.settings || VIEW.pbp ? '</div>' : ''}
   </div>
@@ -645,7 +642,7 @@ function sizeField() {
   // the field takes the room that is left on screen, so the dice and the manager moves stay in view
   const fw = document.querySelector('.fieldwrap'); if (!fw) return;
   const w = fw.getBoundingClientRect().width || 600; const byWidth = w * vbH() / 600;
-  const below = VIEW.cards && VIEW.cardsIn ? 110 : (document.querySelector('.playrow') ? 80 : 0) + 190;   // dice row (and, unless the cards are on the field, the manager moves and game buttons)
+  const below = VIEW.cards && VIEW.cardsIn ? 200 : (document.querySelector('.playrow') ? 80 : 0) + 190;   // dice row (and, unless the cards are on the field, the manager moves and game buttons)
   const avail = Math.max(220, innerHeight - fw.getBoundingClientRect().top - below);
   const cap = VIEW.field === 'small' ? Math.min(avail, innerHeight * 0.34) : VIEW.field === 'large' ? avail : Math.min(avail, innerHeight * 0.5);
   const h = Math.max(200, Math.min(byWidth, cap));

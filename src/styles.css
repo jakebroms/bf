@@ -530,3 +530,19 @@ body.dark .boxnotes, body.dark .boxfoot { background: #1b2436; border-color: #3a
 
 .fieldwrap .fld.moved rect { animation: movedpulse 1.4s ease-in-out infinite; } @keyframes movedpulse { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.35; } }
 .fieldwrap .defban { animation: banpop 0.5s ease-out; } @keyframes banpop { from { opacity: 0; transform: scale(0.9); transform-origin: 300px 220px; } to { opacity: 1; transform: none; } }
+
+/* ---- the game header: title and who's up on the left, diamond and scoreboard on the right ---- */
+.gtop { align-items: center; } .gleft { flex: 1 1 400px; min-width: 0; } .gright { display: flex; align-items: center; gap: 12px; }
+.gwho { display: flex; gap: 18px; flex-wrap: wrap; font-size: calc(13px * var(--fs)); margin-top: 2px; } .gwho b { color: var(--navy); font-size: calc(11px * var(--fs)); margin-right: 3px; } .gwho small { font-size: calc(12px * var(--fs)); }
+.gright .dia { width: calc(76px * var(--fs)); height: calc(60px * var(--fs)); }
+body.dark .gwho b { color: #ffd966; } body.dark .gwho { color: #ddd; }
+/* ---- the view strip ---- */
+.viewbar { position: relative; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 2px 0 6px; padding: 4px 8px; background: #fff; border: 1px solid #c9c9c9; border-radius: 8px; }
+.vlab { font-size: calc(10px * var(--fs)); font-weight: bold; color: #777; letter-spacing: 1px; margin: 0 4px; } .vsep { width: 1px; height: 18px; background: #ddd; margin: 0 6px; }
+.vchip { background: #f3f4f7; border: 1px solid #c9c9c9; border-radius: 14px; padding: 3px 10px; cursor: pointer; font-size: calc(12px * var(--fs)); color: #345; }
+.vchip:hover { background: #e6ebf5; } .vchip.on { background: var(--navy); color: #fff; border-color: var(--navy); } .vchip.pre.on { background: #ffcc00; color: #111; border-color: #c9a227; font-weight: bold; }
+.vchip.def { font-weight: bold; } .vchip.def.set { background: #ffe28a; border-color: #c0392b; color: #7a1f10; } .vchip.def.on { background: var(--navy); color: #fff; }
+.vchip.x { margin-left: auto; padding: 3px 8px; }
+.defpop { position: absolute; right: 8px; top: calc(100% + 4px); z-index: 25; width: 340px; background: #fff; border: 1px solid #bbb; border-radius: 6px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.defpop label { display: flex; justify-content: space-between; align-items: center; margin: 4px 0; font-size: calc(13px * var(--fs)); }
+body.dark .viewbar { background: #1b2436; border-color: #3a4660; } body.dark .vchip { background: #23304a; color: #ddd; border-color: #3a4660; } body.dark .vchip.on { background: #ffcc00; color: #111; border-color: #ffcc00; } body.dark .defpop { background: #1b2436; border-color: #3a4660; color: #eee; }
