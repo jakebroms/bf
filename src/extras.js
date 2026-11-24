@@ -118,9 +118,9 @@ function makePaper() {
   const deck = deckBits.slice(0, 3).join(' · ');
   // paragraphs
   const city = cityOf(teamCode(1)).toUpperCase();
-  const dateTxt = G.sched >= 0 ? D.schedule[G.sched][SC.DATE] : 'Today';
-  const when = dateTxt === 'Today' ? 'today' : pick(['on ' + dateTxt, G.dayNo ? ({ Sat: 'Saturday', Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday' })[D.schedule[G.sched][SC.DAY]] || 'on ' + dateTxt : 'on ' + dateTxt, 'here']);
-  const where = pick([`at ${parkName()}`, `at ${parkName()}`, `before the ${parkName()} crowd`, w === 1 ? 'at home' : 'on the road']);
+  const dateTxt = G.sched >= 0 ? gameDate() : 'Today';
+  const when = dateTxt === 'Today' ? 'today' : pick(['on ' + dateTxt, G.dayNo ? gameDOW() + (G.dh === 2 ? ' night' : '') : 'on ' + dateTxt, 'here']);
+  const where = pick([`at ${parkName()}`, `at ${parkName()}`, G.att ? `before ${fmtNum(G.att)} at ${parkName()}` : `before the ${parkName()} crowd`, G.att ? `in front of ${fmtNum(G.att)}${G.attNote.includes('sellout') || G.attNote.includes('Opening') ? ', a sellout,' : ''} at ${parkName()}` : (w === 1 ? 'at home' : 'on the road'), G.dh ? `in the ${G.dh === 1 ? 'opener' : 'nightcap'} of a doubleheader at ${parkName()}` : `at ${parkName()}`]);
   const P = [];
   const wf = teamFull(wc), lf = teamFull(lc), scoreTxt = `${sw}-${sl}${extra ? ` in ${G.inn} innings` : ''}`;
   const ledeShapes = [
@@ -207,6 +207,12 @@ function makePaper() {
   if (G.errs[w] + G.errs[l] >= 4) notes.push(pick([`A sloppy one: ${G.errs[0] + G.errs[1]} errors in all.`, `The gloves were not good: ${G.errs[0] + G.errs[1]} errors between the two clubs.`]));
   else if (G.errs[l] >= 3) notes.push(`The ${ln} made ${G.errs[l]} errors.`);
   if (G.weather && G.weather.dir !== 'Dome' && G.weather.temp <= 45) notes.push(`Game-time temperature was ${G.weather.temp}°.`);
+  if (G.weather && G.weather.dir === 'Rain') notes.push(pick([`They played through a light rain.`, `A steady drizzle kept the crowd down.`]));
+  if (G.att && G.attNote && /Day|Night/.test(G.attNote)) notes.push(`It was ${G.attNote.split(', ').find(x => /Day|Night/.test(x))} at ${parkName()}.`);
+  if (G.att && /sellout|Opening/.test(G.attNote)) notes.push(pick([`The crowd of ${fmtNum(G.att)} was a sellout.`, `A full house: ${fmtNum(G.att)}.`]));
+  else if (G.att && G.att < 5000) notes.push(pick([`Only ${fmtNum(G.att)} turned out.`, `The announced crowd was ${fmtNum(G.att)}, and that may have been generous.`]));
+  if (G.dh === 1) notes.push(`The clubs play the second game of the doubleheader next.`);
+  if (G.dh === 2) notes.push(`The game made up the ${D.schedule[G.sched][SC.DATE]} rainout.`);
   if (G.weather && G.weather.dir === 'Out' && G.weather.mph >= 15 && hrAll >= 3) notes.push(`The wind was blowing out at ${G.weather.mph} mph, and ${hrAll} balls left the yard.`);
   if (stk.n >= 3 && stk.won && !/straight|row|streak|No\./.test(head)) notes.push(pick([`The ${wn} have won ${stk.n} in a row.`, `That is ${stk.n} straight for the ${wn}.`]));
   if (lstk.n >= 3 && !lstk.won && !/straight|row|skid|losses/.test(head)) notes.push(pick([`The ${ln} have lost ${lstk.n} straight.`, `It is ${lstk.n} losses in a row for the ${ln}.`]));
@@ -222,11 +228,11 @@ function makePaper() {
     ]));
   }
   const wx = windText();
-  return { game: G.gameNo, date: dateTxt, label: '', head, deck, story: P, notes, teams: G.teams.slice(), score: G.score.slice(), park: parkName(), weather: wx, line: G.innRuns.map(r => r.slice(0, G.inn)), exhib: !!G.exhib, playoff: G.playoffRow >= 0 };
+  return { game: G.gameNo, date: dateTxt, label: '', head, deck, story: P, notes, teams: G.teams.slice(), score: G.score.slice(), park: parkName(), weather: wx, line: G.innRuns.map(r => r.slice(0, G.inn)), exhib: !!G.exhib, playoff: G.playoffRow >= 0, att: G.att, time: G.time || timeOfGame(), dh: G.dh };
 }
 function paperHtml(pp) {
   const date = pp.date + ', ' + seasonYr();
-  const others = S.results.filter(r => r.date === pp.date && r.game !== pp.game).map(r => `<div>${esc(nickOf(r.away))} ${r.ra}, ${esc(nickOf(r.home))} ${r.rh} <span class="small">(W: ${esc(r.wp.split(' ').slice(-1)[0])})</span></div>`).join('') || '<div class="small">No other games.</div>';
+  const others = (S.results.filter(r => r.date === pp.date && r.game !== pp.game).map(r => `<div>${esc(nickOf(r.away))} ${r.ra}, ${esc(nickOf(r.home))} ${r.rh} <span class="small">(W: ${esc(r.wp.split(' ').slice(-1)[0])}${r.dh ? ', DH ' + r.dh : ''})</span></div>`).join('') + (S.rainouts || []).filter(r => r.date === pp.date).map(r => `<div>${esc(nickOf(r.away))} at ${esc(nickOf(r.home))} <span class="small">rained out, made up ${esc(r.makeupDate)}</span></div>`).join('')) || '<div class="small">No other games.</div>';
   const divs = []; for (const c of pp.teams) { const d = divisionOf(c); if (!divs.some(x => x.lg === d.lg && x.dv === d.dv)) divs.push(d); }
   const standBox = divs.map(d => `<table class="gz-stand"><tr><th class="l">${esc(leagueName(d.lg).replace(' League', '') + ' ' + divName(d.dv))}</th><th>W</th><th>L</th><th>GB</th></tr>${divStandings(d.lg, d.dv).map(r => `<tr><td class="l">${esc(nickOf(r.code))}</td><td>${r.w}</td><td>${r.l}</td><td>${r.gb ? r.gb : '—'}</td></tr>`).join('')}</table>`).join('');
   const ldr = (lg, stat) => leaderTable('B', stat, lg).rows.slice(0, 3).map(r => `${esc(r.name.replace(/ \(.*\)/, '').split(' ').slice(-1)[0])} <b>${r.v}</b>`).join(', ') || '—';
@@ -234,7 +240,7 @@ function paperHtml(pp) {
   const lineTbl = `<table class="gz-line"><tr><th></th>${Array.from({ length: ni }, (_, i) => '<th>' + (i + 1) + '</th>').join('')}<th>R</th></tr>${[0, 1].map(s => `<tr><td class="l">${pp.teams[s]}</td>${Array.from({ length: ni }, (_, i) => '<td>' + (pp.line[s][i] == null ? '' : pp.line[s][i]) + '</td>').join('')}<td><b>${pp.score[s]}</b></td></tr>`).join('')}</table>`;
   return `<div class="gazette"><div class="gz-mast"><div class="gz-vol">Vol. ${seasonYr() - 1976} · No. ${pp.game}</div><div class="gz-title">The Ball Five Gazette</div><div class="gz-date">${esc(date)} · ${pp.exhib ? 'Exhibition' : pp.playoff ? 'Playoffs' : 'Baseball'}${pp.weather ? ' · ' + esc(pp.weather) : ''}</div></div>
     <h1 class="gz-head">${esc(pp.head)}</h1>${pp.deck ? `<div class="gz-deck">${esc(pp.deck)}</div>` : ''}
-    <div class="gz-cols"><div class="gz-story">${pp.story.map(p => '<p>' + esc(p) + '</p>').join('')}${lineTbl}${pp.notes.length ? '<h4>Notes</h4>' + pp.notes.map(n => '<p class="gz-note">' + esc(n) + '</p>').join('') : ''}</div>
+    <div class="gz-cols"><div class="gz-story">${pp.story.map(p => '<p>' + esc(p) + '</p>').join('')}${lineTbl}${pp.att || pp.time ? `<div class="small gz-tail">${pp.att ? 'Att. ' + fmtNum(pp.att) + '. ' : ''}${pp.time ? 'T ' + pp.time + '.' : ''}</div>` : ''}${pp.notes.length ? '<h4>Notes</h4>' + pp.notes.map(n => '<p class="gz-note">' + esc(n) + '</p>').join('') : ''}</div>
     <div class="gz-side"><h4>Around the league</h4>${others}<h4>Standings</h4>${standBox}<h4>Leaders</h4><div class="gz-ld"><span class="gz-lg">AL</span><i>Average:</i> ${ldr('AL', 'AVG')}<br><i>Homers:</i> ${ldr('AL', 'HR')}</div><div class="gz-ld"><span class="gz-lg">NL</span><i>Average:</i> ${ldr('NL', 'AVG')}<br><i>Homers:</i> ${ldr('NL', 'HR')}</div></div></div></div>`;
 }
 let paperPick = 'latest';

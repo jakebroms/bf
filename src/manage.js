@@ -1,7 +1,7 @@
 /* manage.js: loading teams, game flow, end of game, season records, standings, leaders, playoffs */
 'use strict';
 
-function nextSchedIdx() { for (let i = 0; i < D.schedule.length; i++) if (!(i in S.played)) return i; return -1; }
+function nextSchedIdx() { for (let i = 0; i < D.schedule.length; i++) if (!(i in S.played) && !ppdPending(i)) return i; return -1; }
 function realLURow(gid, team) { const k = gid + '|' + team; return (k in IX.real) ? D.reallu[IX.real[k]] : null; }
 function schedGamesTotal() { return D.schedule.length; }
 
@@ -12,8 +12,17 @@ function loadTeams(mode) {
   const ng = newGame(); ng.gameNo = S.gameNo + 1; S.gameNo = ng.gameNo;
   ng.injuriesOff = false;
   if (mode.kind === 'schedule' && opt('Games').includes('schedule')) {
-    const si = nextSchedIdx(); if (si < 0) { UI.alert('The 1977 schedule is finished!'); S.gameNo = keepGameNo; return false; }
+    let si = nextSchedIdx(); if (si < 0) { UI.alert('The 1977 schedule is finished!'); S.gameNo = keepGameNo; return false; }
+    // rain: a game can be washed out (and made up later as a doubleheader); then the next game on the card is up
+    for (let tries = 0; tries < 8; tries++) {
+      const sr0 = D.schedule[si]; if (dhStatus(si) || rand() >= rainoutChance(sr0[SC.PARK], sr0[SC.HOME], num(sr0[SC.DAY]))) break;
+      const rec = rainOut(si); if (!rec) break;
+      if (UI.toast && !gSim) UI.toast(rainoutText(rec));
+      ng.rainNote = rainoutText(rec);
+      const nsi = nextSchedIdx(); if (nsi < 0) { UI.alert('The 1977 schedule is finished!'); S.gameNo = keepGameNo; return false; } si = nsi;
+    }
     const sr = D.schedule[si]; ng.teams = [sr[SC.AWAY], sr[SC.HOME]]; ng.sched = si; ng.dayNo = num(sr[SC.DAY]);
+    ng.dh = dhStatus(si); if (ng.dh === 2) { const mk = D.schedule[S.ppd[si].makeup]; ng.dayNo = num(mk[SC.DAY]); }
   } else if (mode.kind === 'schedule') {
     ng.teams = mode.away && mode.home ? [mode.away, mode.home] : (G.teams[0] ? G.teams.slice() : ['', '']); ng.exhib = true;
   } else { ng.teams = [mode.away, mode.home]; ng.exhib = mode.kind === 'exhib'; ng.playoffRow = mode.kind === 'playoff' ? mode.row : -1; }
@@ -54,16 +63,21 @@ function loadTeams(mode) {
   }
   resetGame();
   addLog('--- Top of the 1st ---');
+  if (G.rainNote) addLog(G.rainNote);
+  if (G.dh) addLog('Doubleheader, game ' + G.dh + '.');
+  if (G.att) addLog('Attendance: ' + fmtNum(G.att) + (G.attNote ? ' (' + G.attNote + ')' : '') + '. ' + (windText() || ''));
   if (note.length) addLog('Injuries: ' + note.join('; ') + '.');
   saveAll();
   return true;
 }
 function resetGame() {
   G.inn = 1; G.half = 0; G.outs = 0; G.bases = ['', '', '']; G.innRuns = [[0], [0]];
-  G.title = G.sched >= 0 ? seasonYr() + ' game ' + (G.sched + 1) + ' of ' + schedGamesTotal() + ' · ' + D.schedule[G.sched][SC.DATE] + ' · ' + parkName()
+  G.title = G.sched >= 0 ? seasonYr() + ' game ' + (G.sched + 1) + ' of ' + schedGamesTotal() + ' · ' + gameDate() + ' · ' + parkName()
     : (G.exhib ? 'EXHIBITION · ' + parkName() + " · doesn't count" : 'Game · ' + parkName());
+  if (G.dh) G.title += ' · DOUBLEHEADER, game ' + G.dh + (G.dh === 2 ? ' (makeup of the ' + D.schedule[G.sched][SC.DATE] + ' rainout)' : '');
   rollWeather();
   if (windText()) G.title += ' · ' + windText();
+  rollAttendance(); if (attText()) G.title += ' · ' + attText();
   G.rollTxt = teamCode(0) + ' at ' + teamCode(1) + '. Click the dice to play ball.';
   G.playTxt = ''; G.extra = '';
   gPitID = ''; gBatID = '';
@@ -127,7 +141,8 @@ function endGame() {
     if (r) { if (n === 1) { r.CG = 1; if ((side === 0 && sH === 0) || (side === 1 && sA === 0)) r.SHO = 1; } else if (cur !== G.startPit[side]) r.GF = 1; }
   }
   const line = G.innRuns[0].slice(0, G.inn).join('') + ' / ' + G.innRuns[1].slice(0, G.inn).join('');
-  const res = { game: G.gameNo, away: teamCode(0), ra: sA, home: teamCode(1), rh: sH, wp: fullName(wP), lp: fullName(lp), sv: sv ? fullName(sv) : '', line, label: '', date: gameDate(), park: parkName(), day: G.dayNo };
+  G.time = timeOfGame();
+  const res = { game: G.gameNo, away: teamCode(0), ra: sA, home: teamCode(1), rh: sH, wp: fullName(wP), lp: fullName(lp), sv: sv ? fullName(sv) : '', line, label: '', date: gameDate(), park: parkName(), day: G.dayNo, att: G.att, time: G.time, dh: G.dh };
   if (G.playoffRow >= 0) playoffResult(teamCode(w));
   if (G.sched >= 0) {
     S.played[G.sched] = teamCode(0) + ' ' + sA + ', ' + teamCode(1) + ' ' + sH;
@@ -135,13 +150,13 @@ function endGame() {
   }
   if (!G.exhib) { for (let side = 0; side <= 1; side++) { const t = S.teams[teamCode(side)]; if (t) t.next++; } updateRest(); }
   addLog('Final: ' + teamCode(0) + ' ' + sA + ', ' + teamCode(1) + ' ' + sH + '.  W: ' + lastName(wP) + '  L: ' + lastName(lp) + (sv ? '  S: ' + lastName(sv) : ''));
-  if (G.playoffRow < 0 && !G.exhib) { saveToSeason(); updateRecords(); raceLogAdd(); weeklyAdd(); }
+  if (G.playoffRow < 0 && !G.exhib) { saveToSeason(); updateRecords(); raceLogAdd(); weeklyAdd(); gateRecord(); }
   for (const x of G.boxPit) {
     if (x.id === wP) x.dec = 'W, ' + replayPit(x.id, 'W') + '-' + replayPit(x.id, 'L');
     else if (x.id === lp) x.dec = 'L, ' + replayPit(x.id, 'W') + '-' + replayPit(x.id, 'L');
     else if (x.id === sv) x.dec = 'S, ' + replayPit(x.id, 'SV');
   }
-  let ln = G.playoffRow >= 0 && S.playoffs ? S.playoffs.rows[G.playoffRow].round : G.exhib ? 'Exhibition' : gameDate();
+  let ln = G.playoffRow >= 0 && S.playoffs ? S.playoffs.rows[G.playoffRow].round : G.exhib ? 'Exhibition' : gameDate() + (G.dh ? ' (DH ' + G.dh + ')' : '');
   S.results.push(res);
   res.label = '#' + S.results.length + ' · ' + ln + ' · ' + teamCode(0) + ' ' + sA + ' at ' + teamCode(1) + ' ' + sH;
   S.archive[G.gameNo] = snapGame(res.label);
@@ -155,7 +170,7 @@ function trimSeason() {
   const lk = Object.keys(S.logAll).map(Number).sort((a, b) => a - b); while (lk.length > 100) delete S.logAll[lk.shift()];
   const ak = Object.keys(S.archive).map(Number).sort((a, b) => a - b); while (ak.length > 150) delete S.archive[ak.shift()];
 }
-function gameDate() { return G.sched >= 0 ? D.schedule[G.sched][SC.DATE] : 'Exhibition'; }
+function gameDate() { if (G.sched < 0) return 'Exhibition'; if (G.dh === 2 && S.ppd && S.ppd[G.sched]) return D.schedule[S.ppd[G.sched].makeup][SC.DATE]; return D.schedule[G.sched][SC.DATE]; }
 function snapGame(label) {
   return {
     game: G.gameNo, label, teams: G.teams.slice(), names: [teamFull(G.teams[0]), teamFull(G.teams[1])],
@@ -164,7 +179,7 @@ function snapGame(label) {
     status: G.over ? 'Final' + (G.inn > 9 ? ' (' + G.inn + ')' : '') : (G.half === 0 ? 'Top ' : 'Bottom ') + ordinal(G.inn) + ', ' + G.outs + (G.outs === 1 ? ' out' : ' outs'),
     bat: G.boxBat.map(x => Object.assign({}, x, { avg: avg3(replayBat(x.id, 'H'), replayBat(x.id, 'AB')) })),
     pit: G.boxPit.map(x => { const ipo = replayPit(x.id, 'OUTS'); return Object.assign({}, x, { era: ipo > 0 ? fmt2(replayPit(x.id, 'ER') * 27 / ipo) : '-.--' }); }),
-    pa: G.pa.slice(), lineup: deepCopy(G.lineup), inn: G.inn,
+    pa: G.pa.slice(), lineup: deepCopy(G.lineup), inn: G.inn, att: G.att, time: G.time, weather: windText(), dh: G.dh,
   };
 }
 function saveToSeason() {

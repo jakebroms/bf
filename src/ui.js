@@ -99,10 +99,10 @@ UI.showFlashes = () => {
   q.forEach((f, i) => setTimeout(() => { const d = el('div', 'flash ' + f.cls, esc(f.txt)); host.appendChild(d); setTimeout(() => d.remove(), 1500); }, i * 900));
 };
 UI.crowdLevel = () => {
-  if (!G.teams[0] || G.over) { Snd.setLevel(0.012); return; }
+  if (!G.teams[0] || G.over) { Snd.crowd = crowdSize(); Snd.setLevel(0.012); return; }
   let lv = 0.028; if (G.bases[1]) lv += 0.012; if (G.bases[2]) lv += 0.016; if (G.bases[0] && G.bases[1] && G.bases[2]) lv += 0.012;
   if (G.inn >= 7 && Math.abs(G.score[0] - G.score[1]) <= 2) lv += 0.02; if (G.inn >= 9 && Math.abs(G.score[0] - G.score[1]) <= 1) lv += 0.02;
-  Snd.setLevel(lv);
+  Snd.crowd = crowdSize(); Snd.setLevel(lv * (0.45 + 0.55 * Snd.crowd));
 };
 UI.ballToMound = () => { if (gSim) return; const [x, y] = polarXY(64, 84); G.ball = { x, y }; };
 UI.animateDice = () => new Promise(resolve => {
@@ -224,7 +224,11 @@ Actions.setOF = v => { G.ofDepth = v; saveAll(); UI.refresh(); };
 Actions.setPitchAround = v => { G.pitchAround = v; saveAll(); UI.refresh(); };
 Actions.setInjOff = v => { G.injuriesOff = v; saveAll(); UI.refresh(); };
 Actions.toggleToday = () => { luView = luView ? 0 : 1; UI.refresh(); };
-Actions.setSlotPlayer = (side, i, id) => { if (busy) return; G.lineup[side][i].id = id; saveAll(); UI.refresh(); };
+Actions.setSlotPlayer = (side, i, id) => {
+  if (busy) return; const lu = G.lineup[side]; const j = id ? lu.findIndex((s, k) => k !== i && s.id === id) : -1;
+  if (j >= 0) { lu[j].id = lu[i].id; UI.toast(lastName(id) + ' was already batting ' + (j + 1) + (j === 0 ? 'st' : j === 1 ? 'nd' : j === 2 ? 'rd' : 'th') + ': swapped the two spots.'); }
+  lu[i].id = id; saveAll(); UI.refresh();
+};
 Actions.setSlotPos = (side, i, pos) => { if (busy) return; G.lineup[side][i].pos = pos; saveAll(); UI.refresh(); };
 Actions.setPitcher = (side, id) => {
   if (busy || !id) return; G.pitcher[side] = id;
@@ -538,6 +542,7 @@ function showGameSummary() {
     ${hr.length ? `<div class="sumrow"><b>Home runs</b> ${esc(hr.join(', '))}</div>` : ''}${multi.length ? `<div class="sumrow"><b>Big days</b> ${esc(multi.join(', '))}</div>` : ''}
     ${noh.length ? `<div class="sumrow" style="color:#c00"><b>NO-HITTER!</b> ${esc(noh.join(', '))}</div>` : ''}${stks.length ? `<div class="sumrow"><b>Hitting streaks</b> ${esc(stks.join(', '))}</div>` : ''}
     ${pits.map(p => `<div class="sumrow small">${esc(p)}</div>`).join('')}
+    <div class="sumrow small">${G.att ? 'Attendance ' + fmtNum(G.att) + (G.gate ? ' · gate ' + fmtMoney(G.gate) : '') + ' · ' : ''}Time of game ${esc(G.time || timeOfGame())}${windText() ? ' · ' + esc(windText()) : ''}</div>
     <div class="small" style="margin-top:8px">${G.exhib ? 'Exhibition: nothing is saved.' : 'Saved to the standings, season stats, leaders and box score archive.'}</div></div>
     <div class="dlg-btns"><button class="btn primary" id="sumNext" style="width:auto">NEXT GAME</button><button class="btn" id="sumPaper">Read the paper</button><button class="btn" id="sumBox">Scorebook</button><button class="btn" id="sumClose">Close</button></div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
@@ -647,7 +652,7 @@ function scheduleScreen() {
   let h = `<div class="pane"><h2>1977 schedule</h2><div class="btnrow"><label>Team <select onchange="schedTeam=this.value;UI.refresh()"><option value="">All</option>${teams.map(t => `<option${schedTeam === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label><span class="small">Games played: ${Object.keys(S.played).length} of ${D.schedule.length}</span></div><table class="data"><tr><th>#</th><th>Date</th><th>Away</th><th>Home</th><th>Real score</th><th>Replay result</th><th>Park</th></tr>`;
   D.schedule.forEach((r, i) => {
     if (schedTeam && r[SC.AWAY] !== schedTeam && r[SC.HOME] !== schedTeam) return;
-    h += `<tr class="${i === nx ? 'next' : ''}${i in S.played ? ' done' : ''}"><td>${r[SC.NO]}</td><td>${r[SC.DATE]}</td><td>${r[SC.AWAY]}</td><td>${r[SC.HOME]}</td><td>${r[SC.RA]}-${r[SC.RH]}</td><td>${esc(S.played[i] || (i === nx ? 'next up' : ''))}</td><td class="small">${esc(r[SC.PARK])}</td></tr>`;
+    h += `<tr class="${i === nx ? 'next' : ''}${i in S.played ? ' done' : ''}"><td>${r[SC.NO]}</td><td>${r[SC.DATE]}</td><td>${r[SC.AWAY]}</td><td>${r[SC.HOME]}</td><td>${r[SC.RA]}-${r[SC.RH]}</td><td>${esc(S.played[i] || (i === nx ? 'next up' : S.ppd && S.ppd[i] ? 'rained out · makeup ' + S.ppd[i].makeupDate : ''))}${S.ppd && Object.values(S.ppd).some(p => p.makeup === i) ? ' <span class="small">(DH)</span>' : ''}</td><td class="small">${esc(r[SC.PARK])}</td></tr>`;
   });
   root.innerHTML = h + '</table></div>';
 }
@@ -674,7 +679,7 @@ function leadersScreen() {
 function recordsHtml() {
   const R = S.records || {}; const row = (k, t) => R[k] ? `<tr><td class="l"><b>${t}</b></td><td>${R[k].v}${R[k].extra && !String(R[k].extra).startsWith(String(R[k].v)) ? '' : ''}</td><td class="l">${esc(R[k].who)}</td><td class="l small">${esc(R[k].label)}${R[k].extra ? ' · ' + esc(R[k].extra) : ''}</td></tr>` : '';
   const noh = (R.nohit || []).map(n => `<tr><td class="l"><b style="color:#c00">NO-HITTER</b></td><td></td><td class="l">${esc(n.who)}</td><td class="l small">${esc(n.label)} · ${n.walks} walks</td></tr>`).join('');
-  return `<h3 class="lgh">Season records</h3><table class="data"><tr><th class="l">Record</th><th>Mark</th><th class="l">Who</th><th class="l">Game</th></tr>${noh}${row('longhr', 'Longest home run')}${row('hits', 'Most hits in a game')}${row('hr', 'Most homers in a game')}${row('rbi', 'Most RBI in a game')}${row('sb', 'Most steals in a game')}${row('k', 'Most strikeouts by a pitcher')}${row('runs', 'Most runs by a team')}${row('hitsteam', 'Most hits by a team')}${row('blowout', 'Biggest margin')}${row('innings', 'Longest game (innings)')}</table><div class="small">Games played ${R.games || 0} · shutouts ${R.shutouts || 0} · extra-inning games ${R.extras || 0} · walk-off wins ${R.walkoffs || 0}</div>`;
+  return `<h3 class="lgh">Season records</h3><table class="data"><tr><th class="l">Record</th><th>Mark</th><th class="l">Who</th><th class="l">Game</th></tr>${noh}${row('crowd', 'Biggest crowd')}${row('longhr', 'Longest home run')}${row('hits', 'Most hits in a game')}${row('hr', 'Most homers in a game')}${row('rbi', 'Most RBI in a game')}${row('sb', 'Most steals in a game')}${row('k', 'Most strikeouts by a pitcher')}${row('runs', 'Most runs by a team')}${row('hitsteam', 'Most hits by a team')}${row('blowout', 'Biggest margin')}${row('innings', 'Longest game (innings)')}</table><div class="small">Games played ${R.games || 0} · shutouts ${R.shutouts || 0} · extra-inning games ${R.extras || 0} · walk-off wins ${R.walkoffs || 0}</div>`;
 }
 function seasonScreen() {
   const root = $('screen'); const teams = D.teams.map(t => t[T.CODE]);
@@ -685,14 +690,14 @@ function seasonScreen() {
   const pits = Object.entries(S.seasonPit).filter(([id, s]) => !seasonTeam || s.team === seasonTeam).sort((a, b) => a[1].team.localeCompare(b[1].team) || b[1].OUTS - a[1].OUTS);
   h += `</table><h3>Pitching</h3><table class="data"><tr><th class="l">Pitcher</th><th>Tm</th><th>G</th><th>GS</th><th>W</th><th>L</th><th>SV</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>K</th><th>HR</th><th>CG</th><th>SHO</th><th>ERA</th><th>WHIP</th></tr>`;
   for (const [id, s] of pits) h += `<tr><td class="l">${esc(s.name)}</td><td>${friendlyCode(s.team)}</td><td>${s.G}</td><td>${s.GS}</td><td>${s.W}</td><td>${s.L}</td><td>${s.SV}</td><td>${ipTxt(s.OUTS)}</td><td>${s.H}</td><td>${s.R}</td><td>${s.ER}</td><td>${s.BB}</td><td>${s.K}</td><td>${s.HR}</td><td>${s.CG}</td><td>${s.SHO}</td><td>${s.OUTS ? fmt2(s.ER * 27 / s.OUTS) : '-.--'}</td><td>${s.OUTS ? fmt2((s.H + s.BB) * 3 / s.OUTS) : '-.--'}</td></tr>`;
-  root.innerHTML = h + '</table></div>';
+  root.innerHTML = h + '</table>' + gateHtml() + '</div>';
 }
 function boxHtml(a) {
   const ni = Math.max(9, a.innRuns[0].length);
   let h = `<div class="box"><div class="box-t">${a.teams[0]} ${a.score[0]}, ${a.teams[1]} ${a.score[1]}  ·  ${esc(a.status)}</div><div class="box-s">${esc(a.names[0])} at ${esc(a.names[1])}  ·  ${esc(a.park)}${a.label ? '  ·  ' + esc(a.label) : ''}</div>`;
   h += `<table class="data box-line"><tr><th class="l"></th>${Array.from({ length: ni }, (_, i) => `<th>${i + 1}</th>`).join('')}<th>R</th><th>H</th><th>E</th></tr>`;
   for (let s = 0; s <= 1; s++) h += `<tr><td class="l">${esc(a.names[s])}</td>${Array.from({ length: ni }, (_, i) => `<td>${a.innRuns[s][i] == null ? (s === 1 && a.bottomSkipped && i === a.innRuns[0].length - 1 ? 'x' : '') : a.innRuns[s][i]}</td>`).join('')}<td><b>${a.score[s]}</b></td><td><b>${a.hits[s]}</b></td><td><b>${a.errs[s]}</b></td></tr>`;
-  h += '</table><div class="box-cols">';
+  h += '</table>' + (a.att || a.time || a.weather ? `<div class="small box-tail">${a.att ? 'Att. ' + fmtNum(a.att) + '. ' : a.dh === 2 ? 'Second game of the doubleheader. ' : ''}${a.time ? 'T ' + a.time + '. ' : ''}${a.weather ? esc(a.weather) + '.' : ''}</div>` : '') + '<div class="box-cols">';
   for (let s = 0; s <= 1; s++) {
     const tm = a.teams[s]; const tot = {}; BAT_COLS.forEach(c => tot[c] = 0);
     h += `<table class="data"><tr><th class="l">${esc(a.names[s])}</th><th>ab</th><th>r</th><th>h</th><th>2b</th><th>3b</th><th>hr</th><th>bi</th><th>bb</th><th>so</th><th>sb</th><th>avg</th></tr>`;
@@ -739,7 +744,9 @@ function lineupsScreen() {
   <div class="edgrid">${luTbl('R')}${luTbl('L')}<table class="data ed" id="edStaff"><tr><th colspan="2" class="l">Rotation and closer</th></tr>${[0, 1, 2, 3, 4].map(i => `<tr><td>SP ${i + 1}</td><td><select class="edrot">${pOpts(st.rot[i] || '')}</select></td></tr>`).join('')}<tr><td>Closer</td><td><select id="edCloser">${pOpts(st.closer)}</select></td></tr></table></div></div>`;
 }
 Actions.edSave = () => {
-  for (const hand of ['R', 'L']) { const tbl = document.querySelector(`table.ed[data-hand="${hand}"]`); const lu = []; tbl.querySelectorAll('tr').forEach(tr => { const ps = tr.querySelector('.edpos'), pl = tr.querySelector('.edplr'); if (ps) lu.push({ pos: ps.value, id: ps.value === 'P' ? 'PITCHER' : pl.value }); }); S.myLU[edTeam + '|' + hand] = lu; }
+  for (const hand of ['R', 'L']) { const tbl = document.querySelector(`table.ed[data-hand="${hand}"]`); const lu = []; tbl.querySelectorAll('tr').forEach(tr => { const ps = tr.querySelector('.edpos'), pl = tr.querySelector('.edplr'); if (ps) lu.push({ pos: ps.value, id: ps.value === 'P' ? 'PITCHER' : pl.value }); });
+    const ids = lu.map(x => x.id).filter(x => x && x !== 'PITCHER'); const dup = ids.find((x, k) => ids.indexOf(x) !== k); if (dup) { UI.alert(fullName(dup) + ' is in the vs ' + hand + 'HP lineup twice. Fix that first.'); return; }
+    S.myLU[edTeam + '|' + hand] = lu; }
   const rot = []; document.querySelectorAll('#edStaff .edrot').forEach(s => { if (s.value) rot.push(s.value); });
   const st = staffOf(edTeam); if (rot.length) st.rot = rot; const cl = $('edCloser').value; if (cl) st.closer = cl; S.staff[edTeam] = st;
   saveAll(); UI.toast('Saved ' + edTeam + "'s lineups and rotation.");
@@ -889,11 +896,17 @@ UI.syncState = () => { const el = $('sync'); if (!el) return; if (!Net.available
 
 // ======================= refresh =======================
 const SCREENS = { game: ['Game', gameScreen], paper: ['Gazette', paperScreen], scorebook: ['Scorebook', scorebookScreen], box: ['Box score', boxScreen], log: ['Log', logScreen], schedule: ['Schedule', scheduleScreen], standings: ['Standings & race', standingsScreen], leaders: ['Leaders & awards', leadersScreen], season: ['Season stats', seasonScreen], cards: ['Cards', cardsScreen], parks: ['Ballparks', parksScreen], lineups: ['Lineups', lineupsScreen], playoffs: ['Playoffs', playoffsScreen], options: ['Options', optionsScreen], help: ['Help', helpScreen], account: ['Account', accountScreen] };
+// the menu: one tab for the game, then a dropdown for each kind of thing
+const NAV_GROUPS = [['game'], ['Reading', 'paper', 'box', 'scorebook', 'log'], ['Season', 'schedule', 'standings', 'leaders', 'season', 'playoffs'], ['Teams', 'lineups', 'cards', 'parks'], ['Settings', 'options', 'help', 'account']];
 Actions.toggleSound = () => { Snd.toggle(); UI.refresh(); };
 Actions.toggleDark = () => { document.body.classList.toggle('dark'); try { localStorage.setItem('BF5_dark', document.body.classList.contains('dark') ? '1' : '0'); } catch (e) {} UI.refresh(); };
 Actions.toggleBig = () => { document.body.classList.toggle('big'); try { localStorage.setItem('BF5_bigtext', document.body.classList.contains('big') ? '1' : '0'); } catch (e) {} UI.refresh(); };
 UI.refresh = () => {
-  const nav = $('nav'); nav.innerHTML = Object.entries(SCREENS).map(([k, v]) => `<button class="tab${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${v[0]}</button>`).join('');
+  const nav = $('nav'); nav.innerHTML = NAV_GROUPS.map(g => {
+    if (g.length === 1) { const k = g[0]; return `<button class="tab${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`; }
+    const title = g[0], keys = g.slice(1), here = keys.includes(curScreen);
+    return `<div class="navg${here ? ' here' : ''}"><button class="tab${here ? ' on' : ''}" onclick="this.parentNode.classList.toggle('open')">${title}${here ? ' · ' + SCREENS[curScreen][0] : ''} <span class="caret">▾</span></button><div class="navdd">${keys.map(k => `<button class="navitem${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`).join('')}</div></div>`;
+  }).join('');
   const tools = $('tools'); if (tools) tools.innerHTML = `<span id="sync" class="sync"></span><button class="tool" onclick="Actions.viewMenu()" title="Choose what is on the game screen">☰ View</button><button class="tool" onclick="Actions.toggleSound()" title="Sound effects on or off">${Snd.on ? '🔊 Sound on' : '🔇 Sound off'}</button><input type="range" class="vol" min="0" max="100" value="${Math.round(Snd.vol * 100)}" title="Volume" oninput="Snd.setVol(this.value/100)" onchange="sfx('hit',0,{home:true})"><button class="tool" onclick="Actions.toggleDark()" title="Dark or light screen">${document.body.classList.contains('dark') ? '☀ Light mode' : '🌙 Dark mode'}</button><button class="tool" onclick="Actions.toggleBig()" title="Bigger text">${document.body.classList.contains('big') ? 'A Normal text' : 'A+ Bigger text'}</button>`;
   UI.syncState();
   try { SCREENS[curScreen][1](); document.documentElement.style.setProperty('--topH', $('top').offsetHeight + 'px'); } catch (e) { console.error(e); $('screen').innerHTML = '<div class="pane"><p>Something went wrong drawing this screen: ' + esc(e.message) + '</p></div>'; }

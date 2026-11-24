@@ -15,6 +15,12 @@ button, select, input { font-family: inherit; font-size: calc(13px * var(--fs));
 #nav { display: flex; gap: 2px; flex-wrap: wrap; }
 .tab { background: var(--navy2); color: #fff; border: 1px solid #456; padding: 6px 12px; cursor: pointer; border-radius: 3px 3px 0 0; font-size: calc(14px * var(--fs)); }
 #tools { margin-left: auto; display: flex; gap: 6px; }
+.navg { position: relative; } .navg .caret { font-size: 0.8em; opacity: 0.8; }
+.navdd { display: none; position: absolute; left: 0; top: 100%; z-index: 60; min-width: 190px; background: var(--navy2); border: 1px solid #456; border-radius: 0 4px 4px 4px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); padding: 4px; }
+.navg:hover .navdd, .navg.open .navdd { display: block; }
+.navitem { display: block; width: 100%; text-align: left; background: none; border: none; color: #fff; padding: 8px 14px; cursor: pointer; font-size: calc(14px * var(--fs)); border-radius: 3px; }
+.navitem:hover { background: #456; } .navitem.on { background: var(--cream); color: var(--navy); font-weight: bold; }
+body.dark .navdd { background: #1c2a44; border-color: #2a3a58; } body.dark .navitem.on { background: #ffcc00; color: #111; }
 .tool { background: #fff; color: var(--navy); border: 1px solid #ccd; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold; }
 .tab.on { background: var(--cream); color: var(--navy); font-weight: bold; }
 #screen { padding: 8px 12px 30px; max-width: 2500px; margin: 0 auto; }
@@ -355,6 +361,7 @@ body.dark .key { background: #262c36; color: #e6e6e6; border-color: #4a5366; } b
 .gz-note { font-size: calc(13px * var(--fs)) !important; margin: 0 0 4px !important; }
 .gz-side { font-size: calc(13px * var(--fs)); border-left: 1px solid #bbb; padding-left: 16px; } .gz-side div { margin: 2px 0; }
 table.gz-stand, table.gz-line { border-collapse: collapse; width: 100%; font-size: calc(12px * var(--fs)); margin: 4px 0 8px; } table.gz-stand td, table.gz-stand th, table.gz-line td, table.gz-line th { padding: 1px 4px; text-align: center; border-bottom: 1px solid #ddd; } table.gz-stand .l, table.gz-line .l { text-align: left; }
+.box-tail, .gz-tail { margin: 4px 0 8px; font-style: italic; }
 .gz-ld { margin: 6px 0; line-height: 1.4; } .gz-ld .gz-lg { display: block; font-weight: bold; }
 body.dark .gazette { background: #ece6d6; color: #222; }
 /* ---------- the race ---------- */

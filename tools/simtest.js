@@ -11,7 +11,7 @@ const ctx = {
 };
 ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ['data.js', 'sound.js', 'core.js', 'play.js', 'manage.js', 'field.js', 'extras.js']) { if (f === 'extras.js') vm.runInContext('var Actions = {}; var $ = () => null; var busy = false; function runAction(){}', ctx); vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }); }
+for (const f of ['data.js', 'sound.js', 'core.js', 'play.js', 'manage.js', 'field.js', 'extras.js', 'gate.js']) { if (f === 'extras.js') vm.runInContext('var Actions = {}; var $ = () => null; var busy = false; function runAction(){}', ctx); vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }); }
 // stub UI
 vm.runInContext(`
 const UI = {

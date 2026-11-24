@@ -3,7 +3,7 @@
    (Charge!, Take Me Out to the Ball Game, riffs between innings), bat cracks, glove pops. */
 'use strict';
 const Snd = {
-  ctx: null, on: true, vol: 0.8, busyUntil: 0, level: 0.1, ambientOn: false, stretchDone: -1, lastOrgan: 0,
+  ctx: null, on: true, vol: 0.8, crowd: 0.7, busyUntil: 0, level: 0.1, ambientOn: false, stretchDone: -1, lastOrgan: 0,
   init() {
     if (this.ctx) return true;
     try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; return false; }
@@ -39,7 +39,7 @@ const Snd = {
   },
   // the crowd: layered voices (noise through formant-like filters) with a swell
   cheer(t, dur, gain, big) {
-    const a = dur * 0.25;
+    const a = dur * 0.25; gain *= 0.55 + 0.6 * this.crowd; if (this.crowd < 0.45) big = false;
     this.noise(t, dur, { type: 'bandpass', freq: 350, q: 0.7, gain: gain * 0.9, attack: a });
     this.noise(t, dur, { type: 'bandpass', freq: 900, q: 0.8, gain: gain * 0.7, attack: a });
     this.noise(t, dur, { type: 'bandpass', freq: 1900, q: 1, gain: gain * 0.35, attack: a });
@@ -47,9 +47,9 @@ const Snd = {
     if (big) { for (let i = 0; i < 6; i++) { const s = t + 0.3 + Math.random() * dur * 0.6; this.tone(s, 0.25 + Math.random() * 0.3, 1800 + Math.random() * 1200, { gain: 0.03, to: 1200 + Math.random() * 800 }); } }
     for (let i = 0; i < (big ? 10 : 4); i++) { const s = t + 0.2 + Math.random() * dur * 0.7; this.noise(s, 0.12, { type: 'bandpass', freq: 2500 + Math.random() * 2000, q: 4, gain: gain * 0.25, attack: 0.02 }); }
   },
-  groan(t, gain) { this.noise(t, 1.1, { type: 'bandpass', freq: 420, q: 1.5, gain, attack: 0.15, sweepTo: 260 }); this.noise(t, 1.1, { type: 'lowpass', freq: 300, gain: gain * 0.7, attack: 0.15 }); for (let i = 0; i < 5; i++) this.tone(t + 0.05 + i * 0.03, 0.9, 170 + i * 11, { type: 'sawtooth', gain: 0.012, to: 110 + i * 7 }); },
-  boo(t, gain) { for (let i = 0; i < 7; i++) this.tone(t + Math.random() * 0.2, 1.3, 190 + Math.random() * 40, { type: 'sawtooth', gain: gain * 0.03, to: 150 + Math.random() * 30, attack: 0.2 }); this.noise(t, 1.4, { type: 'bandpass', freq: 300, q: 1.2, gain: gain * 0.6, attack: 0.2 }); },
-  murmur(t, gain) { this.noise(t, 0.9, { type: 'bandpass', freq: 500, q: 0.8, gain, attack: 0.1 }); },
+  groan(t, gain) { gain *= 0.55 + 0.6 * this.crowd; this.noise(t, 1.1, { type: 'bandpass', freq: 420, q: 1.5, gain, attack: 0.15, sweepTo: 260 }); this.noise(t, 1.1, { type: 'lowpass', freq: 300, gain: gain * 0.7, attack: 0.15 }); for (let i = 0; i < 5; i++) this.tone(t + 0.05 + i * 0.03, 0.9, 170 + i * 11, { type: 'sawtooth', gain: 0.012, to: 110 + i * 7 }); },
+  boo(t, gain) { gain *= 0.55 + 0.6 * this.crowd; for (let i = 0; i < 7; i++) this.tone(t + Math.random() * 0.2, 1.3, 190 + Math.random() * 40, { type: 'sawtooth', gain: gain * 0.03, to: 150 + Math.random() * 30, attack: 0.2 }); this.noise(t, 1.4, { type: 'bandpass', freq: 300, q: 1.2, gain: gain * 0.6, attack: 0.2 }); },
+  murmur(t, gain) { gain *= 0.55 + 0.6 * this.crowd; this.noise(t, 0.9, { type: 'bandpass', freq: 500, q: 0.8, gain, attack: 0.1 }); },
   crack(t, power) {
     // bat on ball: sharp transient, then the wood ringing
     this.noise(t, 0.012, { type: 'highpass', freq: 2500, gain: 0.9 * power, attack: 0.001 });

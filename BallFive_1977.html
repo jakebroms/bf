@@ -22,6 +22,12 @@ button, select, input { font-family: inherit; font-size: calc(13px * var(--fs));
 #nav { display: flex; gap: 2px; flex-wrap: wrap; }
 .tab { background: var(--navy2); color: #fff; border: 1px solid #456; padding: 6px 12px; cursor: pointer; border-radius: 3px 3px 0 0; font-size: calc(14px * var(--fs)); }
 #tools { margin-left: auto; display: flex; gap: 6px; }
+.navg { position: relative; } .navg .caret { font-size: 0.8em; opacity: 0.8; }
+.navdd { display: none; position: absolute; left: 0; top: 100%; z-index: 60; min-width: 190px; background: var(--navy2); border: 1px solid #456; border-radius: 0 4px 4px 4px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); padding: 4px; }
+.navg:hover .navdd, .navg.open .navdd { display: block; }
+.navitem { display: block; width: 100%; text-align: left; background: none; border: none; color: #fff; padding: 8px 14px; cursor: pointer; font-size: calc(14px * var(--fs)); border-radius: 3px; }
+.navitem:hover { background: #456; } .navitem.on { background: var(--cream); color: var(--navy); font-weight: bold; }
+body.dark .navdd { background: #1c2a44; border-color: #2a3a58; } body.dark .navitem.on { background: #ffcc00; color: #111; }
 .tool { background: #fff; color: var(--navy); border: 1px solid #ccd; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-weight: bold; }
 .tab.on { background: var(--cream); color: var(--navy); font-weight: bold; }
 #screen { padding: 8px 12px 30px; max-width: 2500px; margin: 0 auto; }
@@ -362,6 +368,7 @@ body.dark .key { background: #262c36; color: #e6e6e6; border-color: #4a5366; } b
 .gz-note { font-size: calc(13px * var(--fs)) !important; margin: 0 0 4px !important; }
 .gz-side { font-size: calc(13px * var(--fs)); border-left: 1px solid #bbb; padding-left: 16px; } .gz-side div { margin: 2px 0; }
 table.gz-stand, table.gz-line { border-collapse: collapse; width: 100%; font-size: calc(12px * var(--fs)); margin: 4px 0 8px; } table.gz-stand td, table.gz-stand th, table.gz-line td, table.gz-line th { padding: 1px 4px; text-align: center; border-bottom: 1px solid #ddd; } table.gz-stand .l, table.gz-line .l { text-align: left; }
+.box-tail, .gz-tail { margin: 4px 0 8px; font-style: italic; }
 .gz-ld { margin: 6px 0; line-height: 1.4; } .gz-ld .gz-lg { display: block; font-weight: bold; }
 body.dark .gazette { background: #ece6d6; color: #222; }
 /* ---------- the race ---------- */
@@ -407,7 +414,7 @@ window.BF_DATA={"batters":[["zzPIT","Pitcher (generic)","Pitcher",null,"R",1,2,3
    (Charge!, Take Me Out to the Ball Game, riffs between innings), bat cracks, glove pops. */
 'use strict';
 const Snd = {
-  ctx: null, on: true, vol: 0.8, busyUntil: 0, level: 0.1, ambientOn: false, stretchDone: -1, lastOrgan: 0,
+  ctx: null, on: true, vol: 0.8, crowd: 0.7, busyUntil: 0, level: 0.1, ambientOn: false, stretchDone: -1, lastOrgan: 0,
   init() {
     if (this.ctx) return true;
     try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; return false; }
@@ -443,7 +450,7 @@ const Snd = {
   },
   // the crowd: layered voices (noise through formant-like filters) with a swell
   cheer(t, dur, gain, big) {
-    const a = dur * 0.25;
+    const a = dur * 0.25; gain *= 0.55 + 0.6 * this.crowd; if (this.crowd < 0.45) big = false;
     this.noise(t, dur, { type: 'bandpass', freq: 350, q: 0.7, gain: gain * 0.9, attack: a });
     this.noise(t, dur, { type: 'bandpass', freq: 900, q: 0.8, gain: gain * 0.7, attack: a });
     this.noise(t, dur, { type: 'bandpass', freq: 1900, q: 1, gain: gain * 0.35, attack: a });
@@ -451,9 +458,9 @@ const Snd = {
     if (big) { for (let i = 0; i < 6; i++) { const s = t + 0.3 + Math.random() * dur * 0.6; this.tone(s, 0.25 + Math.random() * 0.3, 1800 + Math.random() * 1200, { gain: 0.03, to: 1200 + Math.random() * 800 }); } }
     for (let i = 0; i < (big ? 10 : 4); i++) { const s = t + 0.2 + Math.random() * dur * 0.7; this.noise(s, 0.12, { type: 'bandpass', freq: 2500 + Math.random() * 2000, q: 4, gain: gain * 0.25, attack: 0.02 }); }
   },
-  groan(t, gain) { this.noise(t, 1.1, { type: 'bandpass', freq: 420, q: 1.5, gain, attack: 0.15, sweepTo: 260 }); this.noise(t, 1.1, { type: 'lowpass', freq: 300, gain: gain * 0.7, attack: 0.15 }); for (let i = 0; i < 5; i++) this.tone(t + 0.05 + i * 0.03, 0.9, 170 + i * 11, { type: 'sawtooth', gain: 0.012, to: 110 + i * 7 }); },
-  boo(t, gain) { for (let i = 0; i < 7; i++) this.tone(t + Math.random() * 0.2, 1.3, 190 + Math.random() * 40, { type: 'sawtooth', gain: gain * 0.03, to: 150 + Math.random() * 30, attack: 0.2 }); this.noise(t, 1.4, { type: 'bandpass', freq: 300, q: 1.2, gain: gain * 0.6, attack: 0.2 }); },
-  murmur(t, gain) { this.noise(t, 0.9, { type: 'bandpass', freq: 500, q: 0.8, gain, attack: 0.1 }); },
+  groan(t, gain) { gain *= 0.55 + 0.6 * this.crowd; this.noise(t, 1.1, { type: 'bandpass', freq: 420, q: 1.5, gain, attack: 0.15, sweepTo: 260 }); this.noise(t, 1.1, { type: 'lowpass', freq: 300, gain: gain * 0.7, attack: 0.15 }); for (let i = 0; i < 5; i++) this.tone(t + 0.05 + i * 0.03, 0.9, 170 + i * 11, { type: 'sawtooth', gain: 0.012, to: 110 + i * 7 }); },
+  boo(t, gain) { gain *= 0.55 + 0.6 * this.crowd; for (let i = 0; i < 7; i++) this.tone(t + Math.random() * 0.2, 1.3, 190 + Math.random() * 40, { type: 'sawtooth', gain: gain * 0.03, to: 150 + Math.random() * 30, attack: 0.2 }); this.noise(t, 1.4, { type: 'bandpass', freq: 300, q: 1.2, gain: gain * 0.6, attack: 0.2 }); },
+  murmur(t, gain) { gain *= 0.55 + 0.6 * this.crowd; this.noise(t, 0.9, { type: 'bandpass', freq: 500, q: 0.8, gain, attack: 0.1 }); },
   crack(t, power) {
     // bat on ball: sharp transient, then the wood ringing
     this.noise(t, 0.012, { type: 'highpass', freq: 2500, gain: 0.9 * power, attack: 0.001 });
@@ -610,6 +617,7 @@ function friendlyCode(t) { return ({ NYA:'NYY', NYN:'NYM', LAN:'LAD', SLN:'STL',
 
 // ---- options ----
 const OPTION_DEFS = D.options.map(o => ({ name: o[0], def: String(o[1]), help: o[2] || '' }));
+OPTION_DEFS.push({ name: 'Rainouts', def: 'On', help: 'On: a few outdoor games a season get rained out and are made up as part of a doubleheader the next time the clubs meet there. Off: every game is played as scheduled.' });
 OPTION_DEFS.push({ name: 'Lineup announcements', def: 'On', help: 'On: before each game the public-address announcer reads both starting lineups over the organ and the crowd (click to skip). Off: straight to the warm-up tosses.' });
 const OPTION_CHOICES = {
   'Games': ['1977 schedule', 'Pick teams'],
@@ -626,6 +634,7 @@ const OPTION_CHOICES = {
   'Splits': ['Real', 'Blended'],
   'DH rule': ["Home team's league", 'Always', 'Never'],
   'Lineup announcements': ['On', 'Off'],
+  'Rainouts': ['On', 'Off'],
 };
 let O = {};
 function optDefaults() { const o = {}; OPTION_DEFS.forEach(d => o[d.name] = d.def); return o; }
@@ -651,7 +660,7 @@ const findMode = () => !gSim && opt('Card lookup') === 'Find it yourself' && G.m
 // ---- season (persistent) and game state ----
 let S = null, G = null;
 function newSeason() {
-  const s = { teams: {}, played: {}, results: [], seasonBat: {}, seasonPit: {}, archive: {}, logAll: {}, pitRest: {}, myLU: {}, staff: {}, gameNo: 0, playoffs: null, records: {}, notes: {}, papers: {}, raceLog: [], weekly: {}, weeklyP: {}, awards: {} };
+  const s = { teams: {}, played: {}, results: [], seasonBat: {}, seasonPit: {}, archive: {}, logAll: {}, pitRest: {}, myLU: {}, staff: {}, gameNo: 0, playoffs: null, records: {}, notes: {}, papers: {}, raceLog: [], weekly: {}, weeklyP: {}, awards: {}, gate: {}, ppd: {}, rainouts: [] };
   D.teams.forEach(t => { s.teams[t[T.CODE]] = { w: 0, l: 0, next: 0 }; });
   D.mylu.forEach(r => { s.myLU[r[0] + '|' + r[1]] = lineupFromRow(r); });
   D.staff.forEach(r => { s.staff[r[0]] = { rot: String(r[1] || '').split(',').filter(Boolean), closer: r[2] || '', pen: String(r[3] || '').split(',').filter(Boolean) }; });
@@ -676,7 +685,7 @@ function newGame() {
     boxBat: [], boxPit: [], log: [], pa: [], longHR: null,
     pend: null, misses: 0,
     dice: null, loc: null, rollTxt: '', playTxt: '', extra: '',
-    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '', intro: 0,
+    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '', intro: 0, att: 0, gate: 0, attNote: '', dh: 0, time: '', rainNote: '',
   };
 }
 
@@ -783,6 +792,7 @@ function rollWeather() {
   const temp = [0, 40, 42, 48, 56, 66, 76, 83, 82, 72, 60, 50, 42][mon] + Math.floor(rand() * 15) - 7;
   if (isDome(parkName())) { G.weather = { dir: 'Dome', mph: 0, temp: 72 }; return; }
   const r = rand(); let dir;
+  if (r < 0.05 && opt('Rainouts') !== 'Off') { G.weather = { dir: 'Rain', mph: 3 + Math.floor(rand() * 8), temp: temp - 6 }; return; }
   if (r < 0.31) dir = 'Calm'; else if (r < 0.43) dir = 'Out to left'; else if (r < 0.55) dir = 'Out to center'; else if (r < 0.67) dir = 'Out to right'; else if (r < 0.85) dir = 'In'; else dir = 'Across';
   const mph = dir === 'Calm' ? Math.floor(rand() * 4) : 5 + Math.floor(rand() * 16);
   G.weather = { dir, mph, temp };
@@ -791,6 +801,7 @@ function windText() {
   const w = G.weather; if (!w) return '';
   if (w.dir === 'Dome') return 'Indoors, 72°';
   if (w.dir === 'Calm') return 'Calm, ' + w.temp + '°';
+  if (w.dir === 'Rain') return 'Light rain, ' + w.temp + '°';
   if (w.dir === 'In') return 'Wind blowing in ' + w.mph + ' mph, ' + w.temp + '°';
   if (w.dir === 'Across') return 'Crosswind ' + w.mph + ' mph, ' + w.temp + '°';
   return 'Wind blowing ' + w.dir.toLowerCase() + ' ' + w.mph + ' mph, ' + w.temp + '°';
@@ -798,6 +809,7 @@ function windText() {
 function windEffect(f) {
   const w = G.weather; if (!w) return 0; const k = w.mph / 20 * 0.1;
   switch (w.dir) {
+    case 'Rain': return -0.04;
     case 'In': return -k;
     case 'Out to left': return f === 7 ? k : f === 8 ? k / 2 : 0;
     case 'Out to center': return f === 8 ? k : k / 2;
@@ -1172,7 +1184,7 @@ function loadAll() {
     if (raw) {
       const o = JSON.parse(raw);
       if (o.O) Object.assign(O, o.O);
-      if (o.S) { S = Object.assign(newSeason(), o.S); if (!S.logAll) S.logAll = {}; if (!S.records) S.records = {}; if (!S.notes) S.notes = {}; if (!S.papers) S.papers = {}; if (!S.raceLog) S.raceLog = []; if (!S.weekly) S.weekly = {}; if (!S.weeklyP) S.weeklyP = {}; if (!S.awards) S.awards = {}; }
+      if (o.S) { S = Object.assign(newSeason(), o.S); if (!S.logAll) S.logAll = {}; if (!S.records) S.records = {}; if (!S.notes) S.notes = {}; if (!S.papers) S.papers = {}; if (!S.raceLog) S.raceLog = []; if (!S.weekly) S.weekly = {}; if (!S.weeklyP) S.weeklyP = {}; if (!S.awards) S.awards = {}; if (!S.gate) S.gate = {}; if (!S.ppd) S.ppd = {}; if (!S.rainouts) S.rainouts = []; }
       if (o.G) { G = Object.assign(newGame(), o.G); }
     }
   } catch (e) { console.warn('load failed', e); }
@@ -2368,7 +2380,7 @@ function prePitchAction() {
 /* manage.js: loading teams, game flow, end of game, season records, standings, leaders, playoffs */
 'use strict';
 
-function nextSchedIdx() { for (let i = 0; i < D.schedule.length; i++) if (!(i in S.played)) return i; return -1; }
+function nextSchedIdx() { for (let i = 0; i < D.schedule.length; i++) if (!(i in S.played) && !ppdPending(i)) return i; return -1; }
 function realLURow(gid, team) { const k = gid + '|' + team; return (k in IX.real) ? D.reallu[IX.real[k]] : null; }
 function schedGamesTotal() { return D.schedule.length; }
 
@@ -2379,8 +2391,17 @@ function loadTeams(mode) {
   const ng = newGame(); ng.gameNo = S.gameNo + 1; S.gameNo = ng.gameNo;
   ng.injuriesOff = false;
   if (mode.kind === 'schedule' && opt('Games').includes('schedule')) {
-    const si = nextSchedIdx(); if (si < 0) { UI.alert('The 1977 schedule is finished!'); S.gameNo = keepGameNo; return false; }
+    let si = nextSchedIdx(); if (si < 0) { UI.alert('The 1977 schedule is finished!'); S.gameNo = keepGameNo; return false; }
+    // rain: a game can be washed out (and made up later as a doubleheader); then the next game on the card is up
+    for (let tries = 0; tries < 8; tries++) {
+      const sr0 = D.schedule[si]; if (dhStatus(si) || rand() >= rainoutChance(sr0[SC.PARK], sr0[SC.HOME], num(sr0[SC.DAY]))) break;
+      const rec = rainOut(si); if (!rec) break;
+      if (UI.toast && !gSim) UI.toast(rainoutText(rec));
+      ng.rainNote = rainoutText(rec);
+      const nsi = nextSchedIdx(); if (nsi < 0) { UI.alert('The 1977 schedule is finished!'); S.gameNo = keepGameNo; return false; } si = nsi;
+    }
     const sr = D.schedule[si]; ng.teams = [sr[SC.AWAY], sr[SC.HOME]]; ng.sched = si; ng.dayNo = num(sr[SC.DAY]);
+    ng.dh = dhStatus(si); if (ng.dh === 2) { const mk = D.schedule[S.ppd[si].makeup]; ng.dayNo = num(mk[SC.DAY]); }
   } else if (mode.kind === 'schedule') {
     ng.teams = mode.away && mode.home ? [mode.away, mode.home] : (G.teams[0] ? G.teams.slice() : ['', '']); ng.exhib = true;
   } else { ng.teams = [mode.away, mode.home]; ng.exhib = mode.kind === 'exhib'; ng.playoffRow = mode.kind === 'playoff' ? mode.row : -1; }
@@ -2421,16 +2442,21 @@ function loadTeams(mode) {
   }
   resetGame();
   addLog('--- Top of the 1st ---');
+  if (G.rainNote) addLog(G.rainNote);
+  if (G.dh) addLog('Doubleheader, game ' + G.dh + '.');
+  if (G.att) addLog('Attendance: ' + fmtNum(G.att) + (G.attNote ? ' (' + G.attNote + ')' : '') + '. ' + (windText() || ''));
   if (note.length) addLog('Injuries: ' + note.join('; ') + '.');
   saveAll();
   return true;
 }
 function resetGame() {
   G.inn = 1; G.half = 0; G.outs = 0; G.bases = ['', '', '']; G.innRuns = [[0], [0]];
-  G.title = G.sched >= 0 ? seasonYr() + ' game ' + (G.sched + 1) + ' of ' + schedGamesTotal() + ' · ' + D.schedule[G.sched][SC.DATE] + ' · ' + parkName()
+  G.title = G.sched >= 0 ? seasonYr() + ' game ' + (G.sched + 1) + ' of ' + schedGamesTotal() + ' · ' + gameDate() + ' · ' + parkName()
     : (G.exhib ? 'EXHIBITION · ' + parkName() + " · doesn't count" : 'Game · ' + parkName());
+  if (G.dh) G.title += ' · DOUBLEHEADER, game ' + G.dh + (G.dh === 2 ? ' (makeup of the ' + D.schedule[G.sched][SC.DATE] + ' rainout)' : '');
   rollWeather();
   if (windText()) G.title += ' · ' + windText();
+  rollAttendance(); if (attText()) G.title += ' · ' + attText();
   G.rollTxt = teamCode(0) + ' at ' + teamCode(1) + '. Click the dice to play ball.';
   G.playTxt = ''; G.extra = '';
   gPitID = ''; gBatID = '';
@@ -2494,7 +2520,8 @@ function endGame() {
     if (r) { if (n === 1) { r.CG = 1; if ((side === 0 && sH === 0) || (side === 1 && sA === 0)) r.SHO = 1; } else if (cur !== G.startPit[side]) r.GF = 1; }
   }
   const line = G.innRuns[0].slice(0, G.inn).join('') + ' / ' + G.innRuns[1].slice(0, G.inn).join('');
-  const res = { game: G.gameNo, away: teamCode(0), ra: sA, home: teamCode(1), rh: sH, wp: fullName(wP), lp: fullName(lp), sv: sv ? fullName(sv) : '', line, label: '', date: gameDate(), park: parkName(), day: G.dayNo };
+  G.time = timeOfGame();
+  const res = { game: G.gameNo, away: teamCode(0), ra: sA, home: teamCode(1), rh: sH, wp: fullName(wP), lp: fullName(lp), sv: sv ? fullName(sv) : '', line, label: '', date: gameDate(), park: parkName(), day: G.dayNo, att: G.att, time: G.time, dh: G.dh };
   if (G.playoffRow >= 0) playoffResult(teamCode(w));
   if (G.sched >= 0) {
     S.played[G.sched] = teamCode(0) + ' ' + sA + ', ' + teamCode(1) + ' ' + sH;
@@ -2502,13 +2529,13 @@ function endGame() {
   }
   if (!G.exhib) { for (let side = 0; side <= 1; side++) { const t = S.teams[teamCode(side)]; if (t) t.next++; } updateRest(); }
   addLog('Final: ' + teamCode(0) + ' ' + sA + ', ' + teamCode(1) + ' ' + sH + '.  W: ' + lastName(wP) + '  L: ' + lastName(lp) + (sv ? '  S: ' + lastName(sv) : ''));
-  if (G.playoffRow < 0 && !G.exhib) { saveToSeason(); updateRecords(); raceLogAdd(); weeklyAdd(); }
+  if (G.playoffRow < 0 && !G.exhib) { saveToSeason(); updateRecords(); raceLogAdd(); weeklyAdd(); gateRecord(); }
   for (const x of G.boxPit) {
     if (x.id === wP) x.dec = 'W, ' + replayPit(x.id, 'W') + '-' + replayPit(x.id, 'L');
     else if (x.id === lp) x.dec = 'L, ' + replayPit(x.id, 'W') + '-' + replayPit(x.id, 'L');
     else if (x.id === sv) x.dec = 'S, ' + replayPit(x.id, 'SV');
   }
-  let ln = G.playoffRow >= 0 && S.playoffs ? S.playoffs.rows[G.playoffRow].round : G.exhib ? 'Exhibition' : gameDate();
+  let ln = G.playoffRow >= 0 && S.playoffs ? S.playoffs.rows[G.playoffRow].round : G.exhib ? 'Exhibition' : gameDate() + (G.dh ? ' (DH ' + G.dh + ')' : '');
   S.results.push(res);
   res.label = '#' + S.results.length + ' · ' + ln + ' · ' + teamCode(0) + ' ' + sA + ' at ' + teamCode(1) + ' ' + sH;
   S.archive[G.gameNo] = snapGame(res.label);
@@ -2522,7 +2549,7 @@ function trimSeason() {
   const lk = Object.keys(S.logAll).map(Number).sort((a, b) => a - b); while (lk.length > 100) delete S.logAll[lk.shift()];
   const ak = Object.keys(S.archive).map(Number).sort((a, b) => a - b); while (ak.length > 150) delete S.archive[ak.shift()];
 }
-function gameDate() { return G.sched >= 0 ? D.schedule[G.sched][SC.DATE] : 'Exhibition'; }
+function gameDate() { if (G.sched < 0) return 'Exhibition'; if (G.dh === 2 && S.ppd && S.ppd[G.sched]) return D.schedule[S.ppd[G.sched].makeup][SC.DATE]; return D.schedule[G.sched][SC.DATE]; }
 function snapGame(label) {
   return {
     game: G.gameNo, label, teams: G.teams.slice(), names: [teamFull(G.teams[0]), teamFull(G.teams[1])],
@@ -2531,7 +2558,7 @@ function snapGame(label) {
     status: G.over ? 'Final' + (G.inn > 9 ? ' (' + G.inn + ')' : '') : (G.half === 0 ? 'Top ' : 'Bottom ') + ordinal(G.inn) + ', ' + G.outs + (G.outs === 1 ? ' out' : ' outs'),
     bat: G.boxBat.map(x => Object.assign({}, x, { avg: avg3(replayBat(x.id, 'H'), replayBat(x.id, 'AB')) })),
     pit: G.boxPit.map(x => { const ipo = replayPit(x.id, 'OUTS'); return Object.assign({}, x, { era: ipo > 0 ? fmt2(replayPit(x.id, 'ER') * 27 / ipo) : '-.--' }); }),
-    pa: G.pa.slice(), lineup: deepCopy(G.lineup), inn: G.inn,
+    pa: G.pa.slice(), lineup: deepCopy(G.lineup), inn: G.inn, att: G.att, time: G.time, weather: windText(), dh: G.dh,
   };
 }
 function saveToSeason() {
@@ -2992,10 +3019,10 @@ UI.showFlashes = () => {
   q.forEach((f, i) => setTimeout(() => { const d = el('div', 'flash ' + f.cls, esc(f.txt)); host.appendChild(d); setTimeout(() => d.remove(), 1500); }, i * 900));
 };
 UI.crowdLevel = () => {
-  if (!G.teams[0] || G.over) { Snd.setLevel(0.012); return; }
+  if (!G.teams[0] || G.over) { Snd.crowd = crowdSize(); Snd.setLevel(0.012); return; }
   let lv = 0.028; if (G.bases[1]) lv += 0.012; if (G.bases[2]) lv += 0.016; if (G.bases[0] && G.bases[1] && G.bases[2]) lv += 0.012;
   if (G.inn >= 7 && Math.abs(G.score[0] - G.score[1]) <= 2) lv += 0.02; if (G.inn >= 9 && Math.abs(G.score[0] - G.score[1]) <= 1) lv += 0.02;
-  Snd.setLevel(lv);
+  Snd.crowd = crowdSize(); Snd.setLevel(lv * (0.45 + 0.55 * Snd.crowd));
 };
 UI.ballToMound = () => { if (gSim) return; const [x, y] = polarXY(64, 84); G.ball = { x, y }; };
 UI.animateDice = () => new Promise(resolve => {
@@ -3117,7 +3144,11 @@ Actions.setOF = v => { G.ofDepth = v; saveAll(); UI.refresh(); };
 Actions.setPitchAround = v => { G.pitchAround = v; saveAll(); UI.refresh(); };
 Actions.setInjOff = v => { G.injuriesOff = v; saveAll(); UI.refresh(); };
 Actions.toggleToday = () => { luView = luView ? 0 : 1; UI.refresh(); };
-Actions.setSlotPlayer = (side, i, id) => { if (busy) return; G.lineup[side][i].id = id; saveAll(); UI.refresh(); };
+Actions.setSlotPlayer = (side, i, id) => {
+  if (busy) return; const lu = G.lineup[side]; const j = id ? lu.findIndex((s, k) => k !== i && s.id === id) : -1;
+  if (j >= 0) { lu[j].id = lu[i].id; UI.toast(lastName(id) + ' was already batting ' + (j + 1) + (j === 0 ? 'st' : j === 1 ? 'nd' : j === 2 ? 'rd' : 'th') + ': swapped the two spots.'); }
+  lu[i].id = id; saveAll(); UI.refresh();
+};
 Actions.setSlotPos = (side, i, pos) => { if (busy) return; G.lineup[side][i].pos = pos; saveAll(); UI.refresh(); };
 Actions.setPitcher = (side, id) => {
   if (busy || !id) return; G.pitcher[side] = id;
@@ -3431,6 +3462,7 @@ function showGameSummary() {
     ${hr.length ? `<div class="sumrow"><b>Home runs</b> ${esc(hr.join(', '))}</div>` : ''}${multi.length ? `<div class="sumrow"><b>Big days</b> ${esc(multi.join(', '))}</div>` : ''}
     ${noh.length ? `<div class="sumrow" style="color:#c00"><b>NO-HITTER!</b> ${esc(noh.join(', '))}</div>` : ''}${stks.length ? `<div class="sumrow"><b>Hitting streaks</b> ${esc(stks.join(', '))}</div>` : ''}
     ${pits.map(p => `<div class="sumrow small">${esc(p)}</div>`).join('')}
+    <div class="sumrow small">${G.att ? 'Attendance ' + fmtNum(G.att) + (G.gate ? ' · gate ' + fmtMoney(G.gate) : '') + ' · ' : ''}Time of game ${esc(G.time || timeOfGame())}${windText() ? ' · ' + esc(windText()) : ''}</div>
     <div class="small" style="margin-top:8px">${G.exhib ? 'Exhibition: nothing is saved.' : 'Saved to the standings, season stats, leaders and box score archive.'}</div></div>
     <div class="dlg-btns"><button class="btn primary" id="sumNext" style="width:auto">NEXT GAME</button><button class="btn" id="sumPaper">Read the paper</button><button class="btn" id="sumBox">Scorebook</button><button class="btn" id="sumClose">Close</button></div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
@@ -3540,7 +3572,7 @@ function scheduleScreen() {
   let h = `<div class="pane"><h2>1977 schedule</h2><div class="btnrow"><label>Team <select onchange="schedTeam=this.value;UI.refresh()"><option value="">All</option>${teams.map(t => `<option${schedTeam === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label><span class="small">Games played: ${Object.keys(S.played).length} of ${D.schedule.length}</span></div><table class="data"><tr><th>#</th><th>Date</th><th>Away</th><th>Home</th><th>Real score</th><th>Replay result</th><th>Park</th></tr>`;
   D.schedule.forEach((r, i) => {
     if (schedTeam && r[SC.AWAY] !== schedTeam && r[SC.HOME] !== schedTeam) return;
-    h += `<tr class="${i === nx ? 'next' : ''}${i in S.played ? ' done' : ''}"><td>${r[SC.NO]}</td><td>${r[SC.DATE]}</td><td>${r[SC.AWAY]}</td><td>${r[SC.HOME]}</td><td>${r[SC.RA]}-${r[SC.RH]}</td><td>${esc(S.played[i] || (i === nx ? 'next up' : ''))}</td><td class="small">${esc(r[SC.PARK])}</td></tr>`;
+    h += `<tr class="${i === nx ? 'next' : ''}${i in S.played ? ' done' : ''}"><td>${r[SC.NO]}</td><td>${r[SC.DATE]}</td><td>${r[SC.AWAY]}</td><td>${r[SC.HOME]}</td><td>${r[SC.RA]}-${r[SC.RH]}</td><td>${esc(S.played[i] || (i === nx ? 'next up' : S.ppd && S.ppd[i] ? 'rained out · makeup ' + S.ppd[i].makeupDate : ''))}${S.ppd && Object.values(S.ppd).some(p => p.makeup === i) ? ' <span class="small">(DH)</span>' : ''}</td><td class="small">${esc(r[SC.PARK])}</td></tr>`;
   });
   root.innerHTML = h + '</table></div>';
 }
@@ -3567,7 +3599,7 @@ function leadersScreen() {
 function recordsHtml() {
   const R = S.records || {}; const row = (k, t) => R[k] ? `<tr><td class="l"><b>${t}</b></td><td>${R[k].v}${R[k].extra && !String(R[k].extra).startsWith(String(R[k].v)) ? '' : ''}</td><td class="l">${esc(R[k].who)}</td><td class="l small">${esc(R[k].label)}${R[k].extra ? ' · ' + esc(R[k].extra) : ''}</td></tr>` : '';
   const noh = (R.nohit || []).map(n => `<tr><td class="l"><b style="color:#c00">NO-HITTER</b></td><td></td><td class="l">${esc(n.who)}</td><td class="l small">${esc(n.label)} · ${n.walks} walks</td></tr>`).join('');
-  return `<h3 class="lgh">Season records</h3><table class="data"><tr><th class="l">Record</th><th>Mark</th><th class="l">Who</th><th class="l">Game</th></tr>${noh}${row('longhr', 'Longest home run')}${row('hits', 'Most hits in a game')}${row('hr', 'Most homers in a game')}${row('rbi', 'Most RBI in a game')}${row('sb', 'Most steals in a game')}${row('k', 'Most strikeouts by a pitcher')}${row('runs', 'Most runs by a team')}${row('hitsteam', 'Most hits by a team')}${row('blowout', 'Biggest margin')}${row('innings', 'Longest game (innings)')}</table><div class="small">Games played ${R.games || 0} · shutouts ${R.shutouts || 0} · extra-inning games ${R.extras || 0} · walk-off wins ${R.walkoffs || 0}</div>`;
+  return `<h3 class="lgh">Season records</h3><table class="data"><tr><th class="l">Record</th><th>Mark</th><th class="l">Who</th><th class="l">Game</th></tr>${noh}${row('crowd', 'Biggest crowd')}${row('longhr', 'Longest home run')}${row('hits', 'Most hits in a game')}${row('hr', 'Most homers in a game')}${row('rbi', 'Most RBI in a game')}${row('sb', 'Most steals in a game')}${row('k', 'Most strikeouts by a pitcher')}${row('runs', 'Most runs by a team')}${row('hitsteam', 'Most hits by a team')}${row('blowout', 'Biggest margin')}${row('innings', 'Longest game (innings)')}</table><div class="small">Games played ${R.games || 0} · shutouts ${R.shutouts || 0} · extra-inning games ${R.extras || 0} · walk-off wins ${R.walkoffs || 0}</div>`;
 }
 function seasonScreen() {
   const root = $('screen'); const teams = D.teams.map(t => t[T.CODE]);
@@ -3578,14 +3610,14 @@ function seasonScreen() {
   const pits = Object.entries(S.seasonPit).filter(([id, s]) => !seasonTeam || s.team === seasonTeam).sort((a, b) => a[1].team.localeCompare(b[1].team) || b[1].OUTS - a[1].OUTS);
   h += `</table><h3>Pitching</h3><table class="data"><tr><th class="l">Pitcher</th><th>Tm</th><th>G</th><th>GS</th><th>W</th><th>L</th><th>SV</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>K</th><th>HR</th><th>CG</th><th>SHO</th><th>ERA</th><th>WHIP</th></tr>`;
   for (const [id, s] of pits) h += `<tr><td class="l">${esc(s.name)}</td><td>${friendlyCode(s.team)}</td><td>${s.G}</td><td>${s.GS}</td><td>${s.W}</td><td>${s.L}</td><td>${s.SV}</td><td>${ipTxt(s.OUTS)}</td><td>${s.H}</td><td>${s.R}</td><td>${s.ER}</td><td>${s.BB}</td><td>${s.K}</td><td>${s.HR}</td><td>${s.CG}</td><td>${s.SHO}</td><td>${s.OUTS ? fmt2(s.ER * 27 / s.OUTS) : '-.--'}</td><td>${s.OUTS ? fmt2((s.H + s.BB) * 3 / s.OUTS) : '-.--'}</td></tr>`;
-  root.innerHTML = h + '</table></div>';
+  root.innerHTML = h + '</table>' + gateHtml() + '</div>';
 }
 function boxHtml(a) {
   const ni = Math.max(9, a.innRuns[0].length);
   let h = `<div class="box"><div class="box-t">${a.teams[0]} ${a.score[0]}, ${a.teams[1]} ${a.score[1]}  ·  ${esc(a.status)}</div><div class="box-s">${esc(a.names[0])} at ${esc(a.names[1])}  ·  ${esc(a.park)}${a.label ? '  ·  ' + esc(a.label) : ''}</div>`;
   h += `<table class="data box-line"><tr><th class="l"></th>${Array.from({ length: ni }, (_, i) => `<th>${i + 1}</th>`).join('')}<th>R</th><th>H</th><th>E</th></tr>`;
   for (let s = 0; s <= 1; s++) h += `<tr><td class="l">${esc(a.names[s])}</td>${Array.from({ length: ni }, (_, i) => `<td>${a.innRuns[s][i] == null ? (s === 1 && a.bottomSkipped && i === a.innRuns[0].length - 1 ? 'x' : '') : a.innRuns[s][i]}</td>`).join('')}<td><b>${a.score[s]}</b></td><td><b>${a.hits[s]}</b></td><td><b>${a.errs[s]}</b></td></tr>`;
-  h += '</table><div class="box-cols">';
+  h += '</table>' + (a.att || a.time || a.weather ? `<div class="small box-tail">${a.att ? 'Att. ' + fmtNum(a.att) + '. ' : a.dh === 2 ? 'Second game of the doubleheader. ' : ''}${a.time ? 'T ' + a.time + '. ' : ''}${a.weather ? esc(a.weather) + '.' : ''}</div>` : '') + '<div class="box-cols">';
   for (let s = 0; s <= 1; s++) {
     const tm = a.teams[s]; const tot = {}; BAT_COLS.forEach(c => tot[c] = 0);
     h += `<table class="data"><tr><th class="l">${esc(a.names[s])}</th><th>ab</th><th>r</th><th>h</th><th>2b</th><th>3b</th><th>hr</th><th>bi</th><th>bb</th><th>so</th><th>sb</th><th>avg</th></tr>`;
@@ -3632,7 +3664,9 @@ function lineupsScreen() {
   <div class="edgrid">${luTbl('R')}${luTbl('L')}<table class="data ed" id="edStaff"><tr><th colspan="2" class="l">Rotation and closer</th></tr>${[0, 1, 2, 3, 4].map(i => `<tr><td>SP ${i + 1}</td><td><select class="edrot">${pOpts(st.rot[i] || '')}</select></td></tr>`).join('')}<tr><td>Closer</td><td><select id="edCloser">${pOpts(st.closer)}</select></td></tr></table></div></div>`;
 }
 Actions.edSave = () => {
-  for (const hand of ['R', 'L']) { const tbl = document.querySelector(`table.ed[data-hand="${hand}"]`); const lu = []; tbl.querySelectorAll('tr').forEach(tr => { const ps = tr.querySelector('.edpos'), pl = tr.querySelector('.edplr'); if (ps) lu.push({ pos: ps.value, id: ps.value === 'P' ? 'PITCHER' : pl.value }); }); S.myLU[edTeam + '|' + hand] = lu; }
+  for (const hand of ['R', 'L']) { const tbl = document.querySelector(`table.ed[data-hand="${hand}"]`); const lu = []; tbl.querySelectorAll('tr').forEach(tr => { const ps = tr.querySelector('.edpos'), pl = tr.querySelector('.edplr'); if (ps) lu.push({ pos: ps.value, id: ps.value === 'P' ? 'PITCHER' : pl.value }); });
+    const ids = lu.map(x => x.id).filter(x => x && x !== 'PITCHER'); const dup = ids.find((x, k) => ids.indexOf(x) !== k); if (dup) { UI.alert(fullName(dup) + ' is in the vs ' + hand + 'HP lineup twice. Fix that first.'); return; }
+    S.myLU[edTeam + '|' + hand] = lu; }
   const rot = []; document.querySelectorAll('#edStaff .edrot').forEach(s => { if (s.value) rot.push(s.value); });
   const st = staffOf(edTeam); if (rot.length) st.rot = rot; const cl = $('edCloser').value; if (cl) st.closer = cl; S.staff[edTeam] = st;
   saveAll(); UI.toast('Saved ' + edTeam + "'s lineups and rotation.");
@@ -3782,11 +3816,17 @@ UI.syncState = () => { const el = $('sync'); if (!el) return; if (!Net.available
 
 // ======================= refresh =======================
 const SCREENS = { game: ['Game', gameScreen], paper: ['Gazette', paperScreen], scorebook: ['Scorebook', scorebookScreen], box: ['Box score', boxScreen], log: ['Log', logScreen], schedule: ['Schedule', scheduleScreen], standings: ['Standings & race', standingsScreen], leaders: ['Leaders & awards', leadersScreen], season: ['Season stats', seasonScreen], cards: ['Cards', cardsScreen], parks: ['Ballparks', parksScreen], lineups: ['Lineups', lineupsScreen], playoffs: ['Playoffs', playoffsScreen], options: ['Options', optionsScreen], help: ['Help', helpScreen], account: ['Account', accountScreen] };
+// the menu: one tab for the game, then a dropdown for each kind of thing
+const NAV_GROUPS = [['game'], ['Reading', 'paper', 'box', 'scorebook', 'log'], ['Season', 'schedule', 'standings', 'leaders', 'season', 'playoffs'], ['Teams', 'lineups', 'cards', 'parks'], ['Settings', 'options', 'help', 'account']];
 Actions.toggleSound = () => { Snd.toggle(); UI.refresh(); };
 Actions.toggleDark = () => { document.body.classList.toggle('dark'); try { localStorage.setItem('BF5_dark', document.body.classList.contains('dark') ? '1' : '0'); } catch (e) {} UI.refresh(); };
 Actions.toggleBig = () => { document.body.classList.toggle('big'); try { localStorage.setItem('BF5_bigtext', document.body.classList.contains('big') ? '1' : '0'); } catch (e) {} UI.refresh(); };
 UI.refresh = () => {
-  const nav = $('nav'); nav.innerHTML = Object.entries(SCREENS).map(([k, v]) => `<button class="tab${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${v[0]}</button>`).join('');
+  const nav = $('nav'); nav.innerHTML = NAV_GROUPS.map(g => {
+    if (g.length === 1) { const k = g[0]; return `<button class="tab${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`; }
+    const title = g[0], keys = g.slice(1), here = keys.includes(curScreen);
+    return `<div class="navg${here ? ' here' : ''}"><button class="tab${here ? ' on' : ''}" onclick="this.parentNode.classList.toggle('open')">${title}${here ? ' · ' + SCREENS[curScreen][0] : ''} <span class="caret">▾</span></button><div class="navdd">${keys.map(k => `<button class="navitem${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`).join('')}</div></div>`;
+  }).join('');
   const tools = $('tools'); if (tools) tools.innerHTML = `<span id="sync" class="sync"></span><button class="tool" onclick="Actions.viewMenu()" title="Choose what is on the game screen">☰ View</button><button class="tool" onclick="Actions.toggleSound()" title="Sound effects on or off">${Snd.on ? '🔊 Sound on' : '🔇 Sound off'}</button><input type="range" class="vol" min="0" max="100" value="${Math.round(Snd.vol * 100)}" title="Volume" oninput="Snd.setVol(this.value/100)" onchange="sfx('hit',0,{home:true})"><button class="tool" onclick="Actions.toggleDark()" title="Dark or light screen">${document.body.classList.contains('dark') ? '☀ Light mode' : '🌙 Dark mode'}</button><button class="tool" onclick="Actions.toggleBig()" title="Bigger text">${document.body.classList.contains('big') ? 'A Normal text' : 'A+ Bigger text'}</button>`;
   UI.syncState();
   try { SCREENS[curScreen][1](); document.documentElement.style.setProperty('--topH', $('top').offsetHeight + 'px'); } catch (e) { console.error(e); $('screen').innerHTML = '<div class="pane"><p>Something went wrong drawing this screen: ' + esc(e.message) + '</p></div>'; }
@@ -3929,9 +3969,9 @@ function makePaper() {
   const deck = deckBits.slice(0, 3).join(' · ');
   // paragraphs
   const city = cityOf(teamCode(1)).toUpperCase();
-  const dateTxt = G.sched >= 0 ? D.schedule[G.sched][SC.DATE] : 'Today';
-  const when = dateTxt === 'Today' ? 'today' : pick(['on ' + dateTxt, G.dayNo ? ({ Sat: 'Saturday', Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday' })[D.schedule[G.sched][SC.DAY]] || 'on ' + dateTxt : 'on ' + dateTxt, 'here']);
-  const where = pick([`at ${parkName()}`, `at ${parkName()}`, `before the ${parkName()} crowd`, w === 1 ? 'at home' : 'on the road']);
+  const dateTxt = G.sched >= 0 ? gameDate() : 'Today';
+  const when = dateTxt === 'Today' ? 'today' : pick(['on ' + dateTxt, G.dayNo ? gameDOW() + (G.dh === 2 ? ' night' : '') : 'on ' + dateTxt, 'here']);
+  const where = pick([`at ${parkName()}`, `at ${parkName()}`, G.att ? `before ${fmtNum(G.att)} at ${parkName()}` : `before the ${parkName()} crowd`, G.att ? `in front of ${fmtNum(G.att)}${G.attNote.includes('sellout') || G.attNote.includes('Opening') ? ', a sellout,' : ''} at ${parkName()}` : (w === 1 ? 'at home' : 'on the road'), G.dh ? `in the ${G.dh === 1 ? 'opener' : 'nightcap'} of a doubleheader at ${parkName()}` : `at ${parkName()}`]);
   const P = [];
   const wf = teamFull(wc), lf = teamFull(lc), scoreTxt = `${sw}-${sl}${extra ? ` in ${G.inn} innings` : ''}`;
   const ledeShapes = [
@@ -4018,6 +4058,12 @@ function makePaper() {
   if (G.errs[w] + G.errs[l] >= 4) notes.push(pick([`A sloppy one: ${G.errs[0] + G.errs[1]} errors in all.`, `The gloves were not good: ${G.errs[0] + G.errs[1]} errors between the two clubs.`]));
   else if (G.errs[l] >= 3) notes.push(`The ${ln} made ${G.errs[l]} errors.`);
   if (G.weather && G.weather.dir !== 'Dome' && G.weather.temp <= 45) notes.push(`Game-time temperature was ${G.weather.temp}°.`);
+  if (G.weather && G.weather.dir === 'Rain') notes.push(pick([`They played through a light rain.`, `A steady drizzle kept the crowd down.`]));
+  if (G.att && G.attNote && /Day|Night/.test(G.attNote)) notes.push(`It was ${G.attNote.split(', ').find(x => /Day|Night/.test(x))} at ${parkName()}.`);
+  if (G.att && /sellout|Opening/.test(G.attNote)) notes.push(pick([`The crowd of ${fmtNum(G.att)} was a sellout.`, `A full house: ${fmtNum(G.att)}.`]));
+  else if (G.att && G.att < 5000) notes.push(pick([`Only ${fmtNum(G.att)} turned out.`, `The announced crowd was ${fmtNum(G.att)}, and that may have been generous.`]));
+  if (G.dh === 1) notes.push(`The clubs play the second game of the doubleheader next.`);
+  if (G.dh === 2) notes.push(`The game made up the ${D.schedule[G.sched][SC.DATE]} rainout.`);
   if (G.weather && G.weather.dir === 'Out' && G.weather.mph >= 15 && hrAll >= 3) notes.push(`The wind was blowing out at ${G.weather.mph} mph, and ${hrAll} balls left the yard.`);
   if (stk.n >= 3 && stk.won && !/straight|row|streak|No\./.test(head)) notes.push(pick([`The ${wn} have won ${stk.n} in a row.`, `That is ${stk.n} straight for the ${wn}.`]));
   if (lstk.n >= 3 && !lstk.won && !/straight|row|skid|losses/.test(head)) notes.push(pick([`The ${ln} have lost ${lstk.n} straight.`, `It is ${lstk.n} losses in a row for the ${ln}.`]));
@@ -4033,11 +4079,11 @@ function makePaper() {
     ]));
   }
   const wx = windText();
-  return { game: G.gameNo, date: dateTxt, label: '', head, deck, story: P, notes, teams: G.teams.slice(), score: G.score.slice(), park: parkName(), weather: wx, line: G.innRuns.map(r => r.slice(0, G.inn)), exhib: !!G.exhib, playoff: G.playoffRow >= 0 };
+  return { game: G.gameNo, date: dateTxt, label: '', head, deck, story: P, notes, teams: G.teams.slice(), score: G.score.slice(), park: parkName(), weather: wx, line: G.innRuns.map(r => r.slice(0, G.inn)), exhib: !!G.exhib, playoff: G.playoffRow >= 0, att: G.att, time: G.time || timeOfGame(), dh: G.dh };
 }
 function paperHtml(pp) {
   const date = pp.date + ', ' + seasonYr();
-  const others = S.results.filter(r => r.date === pp.date && r.game !== pp.game).map(r => `<div>${esc(nickOf(r.away))} ${r.ra}, ${esc(nickOf(r.home))} ${r.rh} <span class="small">(W: ${esc(r.wp.split(' ').slice(-1)[0])})</span></div>`).join('') || '<div class="small">No other games.</div>';
+  const others = (S.results.filter(r => r.date === pp.date && r.game !== pp.game).map(r => `<div>${esc(nickOf(r.away))} ${r.ra}, ${esc(nickOf(r.home))} ${r.rh} <span class="small">(W: ${esc(r.wp.split(' ').slice(-1)[0])}${r.dh ? ', DH ' + r.dh : ''})</span></div>`).join('') + (S.rainouts || []).filter(r => r.date === pp.date).map(r => `<div>${esc(nickOf(r.away))} at ${esc(nickOf(r.home))} <span class="small">rained out, made up ${esc(r.makeupDate)}</span></div>`).join('')) || '<div class="small">No other games.</div>';
   const divs = []; for (const c of pp.teams) { const d = divisionOf(c); if (!divs.some(x => x.lg === d.lg && x.dv === d.dv)) divs.push(d); }
   const standBox = divs.map(d => `<table class="gz-stand"><tr><th class="l">${esc(leagueName(d.lg).replace(' League', '') + ' ' + divName(d.dv))}</th><th>W</th><th>L</th><th>GB</th></tr>${divStandings(d.lg, d.dv).map(r => `<tr><td class="l">${esc(nickOf(r.code))}</td><td>${r.w}</td><td>${r.l}</td><td>${r.gb ? r.gb : '—'}</td></tr>`).join('')}</table>`).join('');
   const ldr = (lg, stat) => leaderTable('B', stat, lg).rows.slice(0, 3).map(r => `${esc(r.name.replace(/ \(.*\)/, '').split(' ').slice(-1)[0])} <b>${r.v}</b>`).join(', ') || '—';
@@ -4045,7 +4091,7 @@ function paperHtml(pp) {
   const lineTbl = `<table class="gz-line"><tr><th></th>${Array.from({ length: ni }, (_, i) => '<th>' + (i + 1) + '</th>').join('')}<th>R</th></tr>${[0, 1].map(s => `<tr><td class="l">${pp.teams[s]}</td>${Array.from({ length: ni }, (_, i) => '<td>' + (pp.line[s][i] == null ? '' : pp.line[s][i]) + '</td>').join('')}<td><b>${pp.score[s]}</b></td></tr>`).join('')}</table>`;
   return `<div class="gazette"><div class="gz-mast"><div class="gz-vol">Vol. ${seasonYr() - 1976} · No. ${pp.game}</div><div class="gz-title">The Ball Five Gazette</div><div class="gz-date">${esc(date)} · ${pp.exhib ? 'Exhibition' : pp.playoff ? 'Playoffs' : 'Baseball'}${pp.weather ? ' · ' + esc(pp.weather) : ''}</div></div>
     <h1 class="gz-head">${esc(pp.head)}</h1>${pp.deck ? `<div class="gz-deck">${esc(pp.deck)}</div>` : ''}
-    <div class="gz-cols"><div class="gz-story">${pp.story.map(p => '<p>' + esc(p) + '</p>').join('')}${lineTbl}${pp.notes.length ? '<h4>Notes</h4>' + pp.notes.map(n => '<p class="gz-note">' + esc(n) + '</p>').join('') : ''}</div>
+    <div class="gz-cols"><div class="gz-story">${pp.story.map(p => '<p>' + esc(p) + '</p>').join('')}${lineTbl}${pp.att || pp.time ? `<div class="small gz-tail">${pp.att ? 'Att. ' + fmtNum(pp.att) + '. ' : ''}${pp.time ? 'T ' + pp.time + '.' : ''}</div>` : ''}${pp.notes.length ? '<h4>Notes</h4>' + pp.notes.map(n => '<p class="gz-note">' + esc(n) + '</p>').join('') : ''}</div>
     <div class="gz-side"><h4>Around the league</h4>${others}<h4>Standings</h4>${standBox}<h4>Leaders</h4><div class="gz-ld"><span class="gz-lg">AL</span><i>Average:</i> ${ldr('AL', 'AVG')}<br><i>Homers:</i> ${ldr('AL', 'HR')}</div><div class="gz-ld"><span class="gz-lg">NL</span><i>Average:</i> ${ldr('NL', 'AVG')}<br><i>Homers:</i> ${ldr('NL', 'HR')}</div></div></div></div>`;
 }
 let paperPick = 'latest';
@@ -4224,6 +4270,129 @@ function parksScreen() {
     <h4>This season here</h4><p>${home.length ? `The ${esc(nickOf(parkPick))} are <b>${hw}-${hl}</b> at home (${aw}-${al} on the road). ${plural(home.length, 'game')} played here, ${(runsHere / home.length).toFixed(1)} runs a game.` : 'No games here yet.'}</p>
     ${R.longhr && R.longhr.label && R.longhr.label.endsWith('at ' + parkPick) ? `<p>The season's longest home run was hit here: ${R.longhr.v} ft by ${esc(R.longhr.who)}.</p>` : ''}
     </div></div></div>`;
+}
+
+/* ---- gate.js ---- */
+/* gate.js: attendance, gate receipts, rain, rainouts and doubleheaders */
+'use strict';
+
+// Average home crowd in 1977 (season total / 81) and park capacity, by club.
+// Totals are the real 1977 figures, rounded: LA led the majors at 2.96 million, Oakland drew 495,000.
+const ATT77 = {
+  BAL: [14800, 52000], BOS: [25600, 33500], CAL: [17700, 43000], CHA: [20500, 44500], CLE: [11100, 74000], DET: [16800, 54000],
+  KCA: [22900, 40600], MIL: [13800, 53000], MIN: [14400, 45900], NYA: [26000, 57500], OAK: [6100, 50000], SEA: [16500, 59000],
+  TEX: [15400, 41000], TOR: [21000, 43700], ATL: [10800, 52700], CHN: [17800, 37700], CIN: [31100, 52400], HOU: [13700, 45000],
+  LAN: [36500, 56000], MON: [17700, 58500], NYN: [13200, 55300], PHI: [33300, 62400], PIT: [15300, 50200], SDN: [17000, 47600],
+  SFN: [8600, 58000], SLN: [20500, 50100],
+};
+// clubs people pay to see on the road
+const DRAW77 = { NYA: 1.3, BOS: 1.15, LAN: 1.2, CIN: 1.25, PHI: 1.1, KCA: 1.05, NYN: 1.05, CHN: 1.05 };
+const TICKET77 = 3.98;  // the average major-league ticket in 1977
+const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function gameDOW() { return G.dayNo > 0 ? DOW[new Date(seasonYr(), 0, G.dayNo).getDay()] : ''; }
+function gameMonth() { return G.dayNo > 0 ? new Date(seasonYr(), 0, G.dayNo).getMonth() + 1 : 7; }
+const fmtNum = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const fmtMoney = n => '$' + fmtNum(n);
+function gaussian() { let u = 0, v = 0; while (u === 0) u = rand(); while (v === 0) v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function westCoast(code) { return /^(LAN|SDN|SFN|OAK|CAL|SEA)$/.test(code); }
+
+// ---------- rain ----------
+// chance that today's game is washed out (outdoor parks only; the West Coast stays dry; spring and September are wettest)
+function rainoutChance(park, home, dayNo) {
+  if (opt('Rainouts') === 'Off' || isDome(park)) return 0;
+  const mon = dayNo > 0 ? new Date(seasonYr(), 0, dayNo).getMonth() + 1 : 7;
+  let p = mon <= 5 ? 0.035 : mon >= 9 ? 0.03 : 0.022;
+  if (westCoast(home)) p *= 0.2; if (home === 'HOU' || home === 'ATL' || home === 'TEX') p *= 0.7;
+  return p;
+}
+// the next scheduled game between the same two clubs at the same park: the makeup date for a doubleheader
+function makeupFor(si) {
+  const r = D.schedule[si];
+  for (let j = si + 1; j < D.schedule.length; j++) { const x = D.schedule[j]; if (x[SC.HOME] === r[SC.HOME] && x[SC.AWAY] === r[SC.AWAY] && x[SC.PARK] === r[SC.PARK] && !(j in S.played) && !(S.ppd && S.ppd[j])) return j; }
+  return -1;
+}
+// called by nextSchedIdx: is schedule game i waiting on a makeup date that has not come yet?
+function ppdPending(i) { const p = S.ppd && S.ppd[i]; return !!p && !(p.makeup in S.played); }
+// a rained-out game gets postponed: returns the record, or null if it cannot be made up (no later visit)
+function rainOut(si) {
+  const j = makeupFor(si); if (j < 0) return null;
+  const r = D.schedule[si], m = D.schedule[j];
+  S.ppd = S.ppd || {}; S.rainouts = S.rainouts || [];
+  const rec = { si, makeup: j, date: r[SC.DATE], away: r[SC.AWAY], home: r[SC.HOME], park: r[SC.PARK], makeupDate: m[SC.DATE], gameNo: S.gameNo };
+  S.ppd[si] = rec; S.rainouts.push(rec);
+  return rec;
+}
+function rainoutText(rec) { return `RAINED OUT: ${teamFull(rec.away)} at ${teamFull(rec.home)}, ${rec.date}, postponed. It will be made up as part of a doubleheader on ${rec.makeupDate}.`; }
+// doubleheader status for the game being loaded: 0 single game, 1 first game, 2 second game (the makeup)
+function dhStatus(si) {
+  if (S.ppd && S.ppd[si] && (S.ppd[si].makeup in S.played)) return 2;
+  if (S.ppd) for (const k in S.ppd) if (S.ppd[k].makeup === si) return 1;
+  return 0;
+}
+
+// ---------- the crowd ----------
+function rollAttendance() {
+  G.att = 0; G.gate = 0; G.attNote = '';
+  if (G.exhib || G.sched < 0 && G.playoffRow < 0) return;
+  const home = teamCode(1), away = teamCode(0), park = parkName();
+  const base = ATT77[home] || [15000, 50000]; let cap = base[1];
+  let att = base[0];
+  const notes = [];
+  if (G.playoffRow >= 0) { att = cap * (0.93 + rand() * 0.06); notes.push('playoff sellout'); }
+  else {
+    const dow = gameDOW();
+    att *= dow === 'Saturday' ? 1.3 : dow === 'Sunday' ? 1.28 : dow === 'Friday' ? 1.12 : 0.84;
+    att *= DRAW77[away] || 1;
+    const t = S.teams[home], g = t.w + t.l;
+    if (g >= 20) { const pct = t.w / g; att *= clamp(1 + (pct - 0.5) * 1.1, 0.75, 1.3); }
+    const mon = gameMonth();
+    if (mon >= 9 && g >= 100) { const { lg, dv } = divisionOf(home); const row = divStandings(lg, dv).find(r => r.code === home); if (row && row.gb <= 3) { att *= 1.25; notes.push('pennant-race crowd'); } }
+    if (t.w + t.l <= 6 && !(S.gate && S.gate[home] && S.gate[home].g > 0)) { att = cap * (0.9 + rand() * 0.08); notes.push('Opening Day'); }
+    if (G.dh === 1) { att *= 1.45; notes.push('doubleheader'); }
+    if (G.dh === 2) { att = 0; notes.push('second game of the doubleheader (one admission)'); }
+    const w = G.weather;
+    if (w && w.dir !== 'Dome') { if (w.dir === 'Rain') { att *= 0.65; notes.push('rain'); } else if (w.temp < 40) { att *= 0.6; notes.push('cold'); } else if (w.temp < 50) att *= 0.8; else if (w.temp >= 70 && w.temp <= 85) att *= 1.05; }
+    if (att > 0 && rand() < 0.06) { att *= 1.3; notes.push(pick(['Bat Day', 'Cap Day', 'Jacket Night', 'Old-Timers Day', 'Helmet Day', 'Fireworks Night', 'Camera Day', 'Ball Day'])); }
+    att *= Math.exp(gaussian() * 0.22);
+  }
+  if (att > cap * 0.985) { att = cap * (0.985 + rand() * 0.015); if (!notes.some(n => /sellout|Opening/.test(n))) notes.push('sellout'); }
+  if (att > 0 && att < 1500) att = 1500 + rand() * 800;
+  G.att = Math.round(att) + (att > 0 ? Math.floor(rand() * 7) : 0);
+  G.gate = Math.round(G.att * TICKET77 * (0.9 + rand() * 0.2));
+  G.attNote = notes.join(', ');
+}
+function attText() { if (!G.att) return G.dh === 2 ? 'Game 2 of the doubleheader' : ''; return 'Att. ' + fmtNum(G.att) + (G.attNote ? ' (' + G.attNote + ')' : ''); }
+// time of game: a 1977 game ran about two and a half hours
+function timeOfGame() {
+  const runs = G.score[0] + G.score[1], hits = G.hits[0] + G.hits[1];
+  const bb = G.boxPit.reduce((s, p) => s + p.BB, 0), pitchers = G.boxPit.length;
+  let min = 96 + (G.inn - 9) * 11 + runs * 2 + hits * 1.2 + bb * 1.5 + pitchers * 2 + (rand() * 14 - 7);
+  if (G.half === 0 && G.over) min -= 10;
+  min = Math.max(95, Math.round(min)); return Math.floor(min / 60) + ':' + String(min % 60).padStart(2, '0');
+}
+// the crowd's size as 0..1 for the sound engine (a full house roars, 6,000 in Oakland does not)
+function crowdSize() { if (!G.att) return G.dh === 2 ? 0.55 : 0.6; const home = teamCode(1); const cap = (ATT77[home] || [15000, 50000])[1]; return clamp(0.25 + 0.75 * Math.sqrt(G.att / cap), 0.25, 1); }
+// season totals, kept per home club
+function gateRecord() {
+  if (G.exhib || G.playoffRow >= 0 || G.sched < 0) return;
+  S.gate = S.gate || {}; const home = teamCode(1); const g = S.gate[home] || (S.gate[home] = { g: 0, att: 0, gate: 0, best: 0, bestDate: '', bestOpp: '', worst: 0, worstDate: '' });
+  g.g++; g.att += G.att; g.gate += G.gate;
+  if (G.att > g.best) { g.best = G.att; g.bestDate = gameDate(); g.bestOpp = teamCode(0); }
+  if (G.att > 0 && (!g.worst || G.att < g.worst)) { g.worst = G.att; g.worstDate = gameDate(); }
+  const R = S.records || (S.records = {});
+  if (G.att > 0 && (!R.crowd || G.att > R.crowd.v)) R.crowd = { v: G.att, who: teamFull(home) + ' vs ' + nickOf(teamCode(0)), game: G.gameNo, label: gameDate() + ' ' + teamCode(0) + ' at ' + teamCode(1), extra: parkName() };
+}
+function gateHtml() {
+  const g = S.gate || {}; const rows = Object.keys(g).map(c => ({ c, ...g[c] })).filter(x => x.g > 0).sort((a, b) => b.att / b.g - a.att / a.g);
+  if (!rows.length) return '';
+  const tot = rows.reduce((s, x) => s + x.att, 0), tg = rows.reduce((s, x) => s + x.g, 0);
+  let h = `<h3>Attendance and gate</h3><p class="small">Crowds are drawn from each club's real 1977 draw, the day of the week, the opponent, the weather, the standings and the promotions calendar. Gate at the 1977 average ticket of $3.98. League average so far: <b>${fmtNum(tot / tg)}</b> a game.</p>`;
+  h += `<table class="data"><tr><th class="l">Club</th><th>Home games</th><th>Total</th><th>Average</th><th>1977 average</th><th>Biggest crowd</th><th>Smallest</th><th>Gate</th></tr>`;
+  for (const x of rows) h += `<tr><td class="l">${esc(teamFull(x.c))}</td><td>${x.g}</td><td>${fmtNum(x.att)}</td><td><b>${fmtNum(x.att / x.g)}</b></td><td class="small">${fmtNum((ATT77[x.c] || [0])[0])}</td><td>${fmtNum(x.best)} <span class="small">${esc(x.bestDate)} vs ${x.bestOpp}</span></td><td>${fmtNum(x.worst)} <span class="small">${esc(x.worstDate)}</span></td><td>${fmtMoney(x.gate)}</td></tr>`;
+  h += '</table>';
+  const ro = S.rainouts || [];
+  if (ro.length) h += `<h3>Rainouts</h3><table class="data"><tr><th>Date</th><th>Game</th><th>Park</th><th>Made up</th></tr>${ro.map(r => `<tr><td>${esc(r.date)}</td><td>${r.away} at ${r.home}</td><td class="small">${esc(r.park)}</td><td>${esc(r.makeupDate)}${(r.si in S.played) ? ' · ' + esc(S.played[r.si]) : ' (doubleheader to come)'}</td></tr>`).join('')}</table>`;
+  return h;
 }
 
 </script>

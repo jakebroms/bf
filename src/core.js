@@ -59,6 +59,7 @@ function friendlyCode(t) { return ({ NYA:'NYY', NYN:'NYM', LAN:'LAD', SLN:'STL',
 
 // ---- options ----
 const OPTION_DEFS = D.options.map(o => ({ name: o[0], def: String(o[1]), help: o[2] || '' }));
+OPTION_DEFS.push({ name: 'Rainouts', def: 'On', help: 'On: a few outdoor games a season get rained out and are made up as part of a doubleheader the next time the clubs meet there. Off: every game is played as scheduled.' });
 OPTION_DEFS.push({ name: 'Lineup announcements', def: 'On', help: 'On: before each game the public-address announcer reads both starting lineups over the organ and the crowd (click to skip). Off: straight to the warm-up tosses.' });
 const OPTION_CHOICES = {
   'Games': ['1977 schedule', 'Pick teams'],
@@ -75,6 +76,7 @@ const OPTION_CHOICES = {
   'Splits': ['Real', 'Blended'],
   'DH rule': ["Home team's league", 'Always', 'Never'],
   'Lineup announcements': ['On', 'Off'],
+  'Rainouts': ['On', 'Off'],
 };
 let O = {};
 function optDefaults() { const o = {}; OPTION_DEFS.forEach(d => o[d.name] = d.def); return o; }
@@ -100,7 +102,7 @@ const findMode = () => !gSim && opt('Card lookup') === 'Find it yourself' && G.m
 // ---- season (persistent) and game state ----
 let S = null, G = null;
 function newSeason() {
-  const s = { teams: {}, played: {}, results: [], seasonBat: {}, seasonPit: {}, archive: {}, logAll: {}, pitRest: {}, myLU: {}, staff: {}, gameNo: 0, playoffs: null, records: {}, notes: {}, papers: {}, raceLog: [], weekly: {}, weeklyP: {}, awards: {} };
+  const s = { teams: {}, played: {}, results: [], seasonBat: {}, seasonPit: {}, archive: {}, logAll: {}, pitRest: {}, myLU: {}, staff: {}, gameNo: 0, playoffs: null, records: {}, notes: {}, papers: {}, raceLog: [], weekly: {}, weeklyP: {}, awards: {}, gate: {}, ppd: {}, rainouts: [] };
   D.teams.forEach(t => { s.teams[t[T.CODE]] = { w: 0, l: 0, next: 0 }; });
   D.mylu.forEach(r => { s.myLU[r[0] + '|' + r[1]] = lineupFromRow(r); });
   D.staff.forEach(r => { s.staff[r[0]] = { rot: String(r[1] || '').split(',').filter(Boolean), closer: r[2] || '', pen: String(r[3] || '').split(',').filter(Boolean) }; });
@@ -125,7 +127,7 @@ function newGame() {
     boxBat: [], boxPit: [], log: [], pa: [], longHR: null,
     pend: null, misses: 0,
     dice: null, loc: null, rollTxt: '', playTxt: '', extra: '',
-    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '', intro: 0,
+    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '', intro: 0, att: 0, gate: 0, attNote: '', dh: 0, time: '', rainNote: '',
   };
 }
 
@@ -232,6 +234,7 @@ function rollWeather() {
   const temp = [0, 40, 42, 48, 56, 66, 76, 83, 82, 72, 60, 50, 42][mon] + Math.floor(rand() * 15) - 7;
   if (isDome(parkName())) { G.weather = { dir: 'Dome', mph: 0, temp: 72 }; return; }
   const r = rand(); let dir;
+  if (r < 0.05 && opt('Rainouts') !== 'Off') { G.weather = { dir: 'Rain', mph: 3 + Math.floor(rand() * 8), temp: temp - 6 }; return; }
   if (r < 0.31) dir = 'Calm'; else if (r < 0.43) dir = 'Out to left'; else if (r < 0.55) dir = 'Out to center'; else if (r < 0.67) dir = 'Out to right'; else if (r < 0.85) dir = 'In'; else dir = 'Across';
   const mph = dir === 'Calm' ? Math.floor(rand() * 4) : 5 + Math.floor(rand() * 16);
   G.weather = { dir, mph, temp };
@@ -240,6 +243,7 @@ function windText() {
   const w = G.weather; if (!w) return '';
   if (w.dir === 'Dome') return 'Indoors, 72°';
   if (w.dir === 'Calm') return 'Calm, ' + w.temp + '°';
+  if (w.dir === 'Rain') return 'Light rain, ' + w.temp + '°';
   if (w.dir === 'In') return 'Wind blowing in ' + w.mph + ' mph, ' + w.temp + '°';
   if (w.dir === 'Across') return 'Crosswind ' + w.mph + ' mph, ' + w.temp + '°';
   return 'Wind blowing ' + w.dir.toLowerCase() + ' ' + w.mph + ' mph, ' + w.temp + '°';
@@ -247,6 +251,7 @@ function windText() {
 function windEffect(f) {
   const w = G.weather; if (!w) return 0; const k = w.mph / 20 * 0.1;
   switch (w.dir) {
+    case 'Rain': return -0.04;
     case 'In': return -k;
     case 'Out to left': return f === 7 ? k : f === 8 ? k / 2 : 0;
     case 'Out to center': return f === 8 ? k : k / 2;
@@ -621,7 +626,7 @@ function loadAll() {
     if (raw) {
       const o = JSON.parse(raw);
       if (o.O) Object.assign(O, o.O);
-      if (o.S) { S = Object.assign(newSeason(), o.S); if (!S.logAll) S.logAll = {}; if (!S.records) S.records = {}; if (!S.notes) S.notes = {}; if (!S.papers) S.papers = {}; if (!S.raceLog) S.raceLog = []; if (!S.weekly) S.weekly = {}; if (!S.weeklyP) S.weeklyP = {}; if (!S.awards) S.awards = {}; }
+      if (o.S) { S = Object.assign(newSeason(), o.S); if (!S.logAll) S.logAll = {}; if (!S.records) S.records = {}; if (!S.notes) S.notes = {}; if (!S.papers) S.papers = {}; if (!S.raceLog) S.raceLog = []; if (!S.weekly) S.weekly = {}; if (!S.weeklyP) S.weeklyP = {}; if (!S.awards) S.awards = {}; if (!S.gate) S.gate = {}; if (!S.ppd) S.ppd = {}; if (!S.rainouts) S.rainouts = []; }
       if (o.G) { G = Object.assign(newGame(), o.G); }
     }
   } catch (e) { console.warn('load failed', e); }
