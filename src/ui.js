@@ -753,20 +753,22 @@ const OPTION_GROUPS = [
   ['The season', ['Games', 'Lineups', 'Injuries', 'Pitcher rest days', 'Tired pitcher cutoff', 'DH rule', 'Splits', 'Park effects', 'Weather', 'Rainouts']],
   ['How a play goes', ['Click to play results', 'Card lookup', 'Solo dice mode', 'Mode', 'Send/hold prompts', 'Pickoffs', 'Computer steals', 'Surprise steals', 'Momentum', 'Pitcher daily form', 'Warm-up tosses', 'At the wall']],
   ['Pop-ups', ['Pop-ups', 'Fielding check pop-ups', 'Runner pop-ups', 'Steal and pickoff pop-ups', 'Big lead pop-ups', 'Close plays at first', 'Manager arguments', 'The pivot', 'Plays at the plate', 'Error pop-ups']],
-  ['Looks and sound', ['Ballpark look', 'Lineup announcements', 'Announcer voice', 'Bouton tribute']],
+  ['Looks and sound', ['Ballpark look', 'Lineup announcements', 'Announcer voice', 'Voice', 'Bouton tribute']],
 ];
 function optionsScreen() {
   const root = $('screen'); const placed = new Set();
   let h = `<div class="pane stats">` + heroHtml('Options', 'How the game plays. Everything is saved automatically' + (Net.available && Net.user ? ', here and to your account' : '') + '.');
-  const row = d => { const choices = OPTION_CHOICES[d.name] || ['On', 'Off']; const v = opt(d.name); placed.add(d.name);
-    return `<div class="optrow"><div class="opt-n">${esc(d.name)}</div><div class="opt-s"><select onchange="Actions.setOpt('${esc(d.name)}',this.value)">${choices.map(c => `<option${c === v ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div><div class="opt-h">${esc(d.help)}</div></div>`; };
+  const row = d => { let choices = OPTION_CHOICES[d.name] || ['On', 'Off']; const v = opt(d.name); placed.add(d.name);
+    if (d.name === 'Voice') choices = ['Automatic'].concat(Snd.voices().map(x => x.name));
+    return `<div class="optrow"><div class="opt-n">${esc(d.name)}</div><div class="opt-s"><select onchange="Actions.setOpt('${esc(d.name)}',this.value)">${choices.map(c => `<option${c === v ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>${d.name === 'Voice' ? `<button class="mini" style="margin-top:4px" onclick="Actions.hearVoice()">Hear it</button>` : ''}</div><div class="opt-h">${esc(d.help)}${d.name === 'Voice' && !Snd.voices().length ? ' (This browser offers no English voices.)' : ''}</div></div>`; };
   const groups = OPTION_GROUPS.map(([t, names]) => [t, names.map(n => OPTION_DEFS.find(d => d.name === n)).filter(Boolean)]);
   const rest = OPTION_DEFS.filter(d => !groups.some(g => g[1].includes(d))); if (rest.length) groups.push(['Other', rest]);
   for (const [title, defs] of groups) h += `<div class="optcard"><div class="stcard-h">${esc(title)}</div>${defs.map(row).join('')}</div>`;
   h += `<div class="btnrow end"><button class="btn warn" onclick="Actions.resetOptions()">Put every option back to normal</button></div></div>`;
   root.innerHTML = h;
 }
-Actions.setOpt = (nm, v) => { O[nm] = v; saveAll(); UI.refresh(); };
+Actions.setOpt = (nm, v) => { O[nm] = v; saveAll(); UI.refresh(); if (nm === 'Voice') Actions.hearVoice(); };
+Actions.hearVoice = () => { Snd.init(); Snd.resume(); Snd.say('Now batting, number eight, the catcher, Carlton Fisk.', 'pa', true); };
 Actions.resetOptions = () => { O = optDefaults(); saveAll(); UI.refresh(); };
 Actions.exportSave = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([exportJSON()], { type: 'application/json' })); a.download = 'BallFive_1977_save.json'; a.click(); };
 Actions.importSave = async f => { if (!f) return; try { importJSON(await f.text()); UI.refresh(); UI.toast('Save imported.'); } catch (e) { UI.alert('Could not import: ' + e.message); } };
