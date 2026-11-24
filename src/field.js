@@ -267,10 +267,22 @@ function renderField(container) {
   let s = pk.svg;
   for (let f = 1; f <= 9; f++) {
     const id = defID(fside, f); let x, y;
-    if (f === 2) { x = 300; y = 9; } else [x, y] = polarXY(fDistFt(f), fAng(f));
+    // the defense: fielders playing in or deep move on the field and light up
+    const inIF = f >= 3 && f <= 6 && (G.infield === 'Infield in' || (G.infield === 'Corners in' && (f === 3 || f === 5)));
+    const ofMove = f >= 7 && (G.ofDepth === 'Deep' || G.ofDepth === 'Shallow');
+    let ft = fDistFt(f), ang = fAng(f);
+    if (inIF) { if (f === 3 || f === 5) { ft = 75; ang = f === 3 ? 35 : 145; } else { ft = 125; ang = f === 4 ? 60 : 120; } }   // corners in front of the bag, middle men on the grass edge
+    if (f >= 7 && G.ofDepth === 'Deep') ft = Math.min(ft * 1.13, fenceAt(ang) - 28); if (f >= 7 && G.ofDepth === 'Shallow') ft *= 0.84;
+    if (f === 2) { x = 300; y = 9; } else [x, y] = polarXY(ft, ang);
     const [l1, l2] = fielderLabel(f, id); const w = Math.max(70, l1.length * 8.2 + 12, l2.length * 4.6 + 8);
-    const glow = pendX === f; const h = l2 ? 26 : 18;
-    s += `<g class="fld${glow ? ' glow' : ''}" data-f="${f}" style="cursor:${glow ? 'pointer' : 'default'}"><rect x="${(x - w / 2).toFixed(1)}" y="${(FY(y) - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="4" ${stadiumLook() ? 'filter="url(#shadow)"' : ''} fill="${glow ? '#ffc000' : '#fff'}" fill-opacity="0.95" stroke="${glow ? '#c55a11' : '#6e9a3a'}" stroke-width="${glow ? 2 : 1}"/><text x="${x.toFixed(1)}" y="${(FY(y) + (l2 ? -0.5 : 4.5)).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="#111">${esc(l1)}</text>${l2 ? `<text x="${x.toFixed(1)}" y="${(FY(y) + 9.5).toFixed(1)}" text-anchor="middle" font-size="7.5" font-family="Arial" fill="#444">${esc(l2)}</text>` : ''}</g>`;
+    const glow = pendX === f; const h = l2 ? 26 : 18; const moved = !glow && (inIF || ofMove);
+    s += `<g class="fld${glow ? ' glow' : ''}${moved ? ' moved' : ''}" data-f="${f}" style="cursor:${glow ? 'pointer' : 'default'}"><rect x="${(x - w / 2).toFixed(1)}" y="${(FY(y) - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="4" ${stadiumLook() ? 'filter="url(#shadow)"' : ''} fill="${glow ? '#ffc000' : moved ? '#ffe28a' : '#fff'}" fill-opacity="0.95" stroke="${glow ? '#c55a11' : moved ? '#c0392b' : '#6e9a3a'}" stroke-width="${glow || moved ? 2.5 : 1}"/><text x="${x.toFixed(1)}" y="${(FY(y) + (l2 ? -0.5 : 4.5)).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="#111">${esc(l1)}</text>${l2 ? `<text x="${x.toFixed(1)}" y="${(FY(y) + 9.5).toFixed(1)}" text-anchor="middle" font-size="7.5" font-family="Arial" fill="#444">${esc(l2)}</text>` : ''}</g>`;
+  }
+  if (!G.over && G.teams[0]) {
+    const banner = (txt, y, color) => `<g class="defban"><rect x="${300 - txt.length * 7.2 - 14}" y="${y - 15}" width="${txt.length * 14.4 + 28}" height="30" rx="8" fill="${color}" fill-opacity="0.9" stroke="#fff" stroke-width="2"/><text x="300" y="${y + 7}" text-anchor="middle" font-size="20" font-weight="bold" font-family="Arial" fill="#fff" letter-spacing="2">${txt}</text></g>`;
+    if (G.infield === 'Infield in') s += banner('INFIELD IN!', FY(pk.b2y) + 60, '#c0392b'); else if (G.infield === 'Corners in') s += banner('CORNERS IN', FY(pk.b2y) + 60, '#c0392b');
+    if (G.ofDepth === 'Deep') s += banner('OUTFIELD DEEP', FY(pk.b2y) - 34, '#1f3864'); else if (G.ofDepth === 'Shallow') s += banner('OUTFIELD SHALLOW', FY(pk.b2y) - 34, '#1f3864');
+    if (G.pitchAround) { const bs2 = batSideTeam(), bid2 = slotID(bs2, G.next[bs2] || 1); const lefty2 = bid2 && isBat(bid2) && (batsOf(bid2) === 'L' || (batsOf(bid2) === 'S' && throws_(curPitcherID(1 - bs2)) === 'R')); const px = lefty2 ? 232 : 368; s += `<g class="defban"><rect x="${px - 74}" y="${FY(HOMEY + 30) - 9}" width="148" height="18" rx="6" fill="#7a4a00" fill-opacity="0.9" stroke="#fff" stroke-width="1.5"/><text x="${px}" y="${FY(HOMEY + 30) + 4.5}" text-anchor="middle" font-size="11" font-weight="bold" font-family="Arial" fill="#fff">PITCHING AROUND HIM</text></g>`; }
   }
   pk.bases.forEach((b, i) => {
     const rid = G.bases[i]; if (!rid) return;
