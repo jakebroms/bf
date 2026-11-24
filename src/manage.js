@@ -233,7 +233,7 @@ function leaderTable(kind, stat, lg) {
   list.sort((a, b) => low ? a.v - b.v : b.v - a.v);
   const fmt = v => ['AVG', 'OBP', 'SLG', 'OPS'].includes(stat) ? (v >= 1 ? v.toFixed(3) : fmt3(v)) : (stat === 'ERA' || stat === 'WHIP') ? fmt2(v) : stat === 'IP' ? Math.floor(v + 0.0001) + '.' + Math.round((v - Math.floor(v + 0.0001)) * 3) : String(v);
   const titles = { AVG: 'Batting average', HR: 'Home runs', RBI: 'Runs batted in', OBP: 'On-base pct', SLG: 'Slugging pct', OPS: 'OPS (OBP + SLG)', '2B': 'Doubles', WHIP: 'WHIP', R: 'Runs', H: 'Hits', SB: 'Stolen bases', BB: 'Walks', W: 'Wins', ERA: 'ERA', K: 'Strikeouts', SV: 'Saves', IP: 'Innings', CG: 'Complete games', SHO: 'Shutouts', E: 'Errors (most)' };
-  return { title: titles[stat] || stat, rows: list.slice(0, 10).map(r => ({ name: r.name + ' (' + friendlyCode(r.team) + ')', v: fmt(r.v) })) };
+  return { title: titles[stat] || stat, rows: list.slice(0, 10).map(r => ({ name: r.name + ' (' + friendlyCode(r.team) + ')', who: r.name, team: r.team, v: fmt(r.v) })) };
 }
 const LEADER_DEFS = [['B', 'AVG'], ['B', 'OBP'], ['B', 'SLG'], ['B', 'OPS'], ['B', 'HR'], ['B', 'RBI'], ['B', 'R'], ['B', 'H'], ['B', 'SB'], ['B', 'BB'], ['B', '2B'], ['B', 'E'], ['P', 'W'], ['P', 'ERA'], ['P', 'WHIP'], ['P', 'K'], ['P', 'SV'], ['P', 'IP'], ['P', 'CG'], ['P', 'SHO']];
 function teamLeaders(lg) {

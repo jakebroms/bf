@@ -275,25 +275,6 @@ function raceChart(lg, dv) {
   s += `<text x="${px}" y="10" font-size="9" fill="#555">games behind, by day</text></svg>`;
   return s;
 }
-function raceHtml() {
-  const lgs = leagueList(); let h = '<h3>The pennant race</h3>';
-  const played = Object.keys(S.played).length; const perTeam = 162;
-  for (const lg of lgs) {
-    const divs = [...new Set(D.teams.filter(t => t[T.LG] === lg).map(t => t[T.DIV] || ''))];
-    for (const dv of divs) {
-      const rows = divStandings(lg, dv); const lead = rows[0], second = rows[1];
-      let magic = ''; if (second && S.teams[lead.code].w + S.teams[lead.code].l >= 110) { const m = perTeam + 1 - lead.w - second.l; magic = m <= 0 ? `<span class="tag clinch">CLINCHED</span>` : m <= 30 ? `<span class="tag magic">Magic number ${m}</span>` : ''; }
-      const tight = second && second.gb <= 2 && S.teams[lead.code].w + S.teams[lead.code].l >= 20 ? `<span class="tag hot">RACE: ${nickOf(second.code)} ${second.gb === 0 ? 'tied' : second.gb + ' back'}</span>` : '';
-      h += `<div class="racebox"><div class="raceh"><b>${esc(leagueName(lg))} ${esc(divName(dv))}</b> · ${esc(teamFull(lead.code))} ${lead.w}-${lead.l}${second ? ', ' + esc(nickOf(second.code)) + ' ' + (second.gb ? second.gb + ' back' : 'tied') : ''} ${magic} ${tight}</div>${raceChart(lg, dv)}</div>`;
-    }
-  }
-  // the playoff picture
-  h += '<h3>If the season ended today</h3><div class="btnrow">';
-  for (const lg of lgs) { const divs = [...new Set(D.teams.filter(t => t[T.LG] === lg).map(t => t[T.DIV] || ''))]; const champs = divs.map(dv => divStandings(lg, dv)[0]); h += `<div class="panel" style="min-width:260px"><div class="ph">${esc(leagueName(lg))} Championship Series</div>${champs.map(c => `<div><b>${esc(teamFull(c.code))}</b> ${c.w}-${c.l}</div>`).join('<div class="small">versus</div>')}</div>`; }
-  h += '</div>';
-  if (played === 0) h = '<h3>The pennant race</h3><p class="small">The race starts with the first game.</p>';
-  return h;
-}
 
 // ---------- 3. AWARDS ----------
 function weeklyAdd() {
@@ -317,34 +298,6 @@ function bestOfPeriod(weeks, lg) {
     pitcher: pb && pb.sc > 0 ? { id: pb.id, team: pb.a[8], line: `${pb.a[5]}-${pb.a[6]}${pb.a[7] ? ', ' + pb.a[7] + ' SV' : ''}, ${ipTxt(pb.a[0])} IP, ${pb.a[0] ? fmt2(pb.a[2] * 27 / pb.a[0]) : '-'} ERA, ${pb.a[4]} K` } : null };
 }
 function monthOfDay(d) { return new Date(seasonYr(), 0, d).getMonth() + 1; }
-function awardsHtml() {
-  const weeks = Object.keys(S.weekly || {}).map(Number).sort((a, b) => a - b); if (!weeks.length) return '<h3>Awards</h3><p class="small">Player of the week and the awards race appear once games are in the books.</p>';
-  const lastWk = weeks[weeks.length - 1]; const curMonth = monthOfDay(lastWk * 7 + 3); const monthWeeks = weeks.filter(w => monthOfDay(w * 7 + 3) === curMonth);
-  const MN = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October'];
-  let h = '<h3>Awards</h3><div class="awgrid">';
-  for (const lg of leagueList()) {
-    const wkB = bestOfPeriod([lastWk], lg), moB = bestOfPeriod(monthWeeks, lg);
-    const cell = (t, x) => x ? `<div class="aw"><b>${t}</b> ${esc(fullName(x.id))} <small>(${friendlyCode(x.team)})</small><br><small>${esc(x.line)}</small></div>` : '';
-    h += `<div class="panel"><div class="ph">${esc(leagueName(lg))}</div>${cell('Player of the week', wkB.hitter)}${cell('Pitcher of the week', wkB.pitcher)}${cell('Player of the month (' + MN[curMonth] + ')', moB.hitter)}${cell('Pitcher of the month', moB.pitcher)}</div>`;
-  }
-  h += '</div><h3>The awards race <small class="small">(if the season ended today; the commissioner may overrule)</small></h3><div class="awgrid">';
-  S.awards = S.awards || {};
-  for (const lg of leagueList()) {
-    const g = Math.max(1, ...D.teams.filter(t => t[T.LG] === lg).map(t => teamGames(t[T.CODE])));
-    const bats = Object.entries(S.seasonBat).filter(([id, s]) => teamLeague(s.team) === lg && s.AB + s.BB + s.HBP + s.SF >= 2.5 * g).map(([id, s]) => { const pa = s.AB + s.BB + s.HBP + s.SF; const tb = s.H + s['2B'] + 2 * s['3B'] + 3 * s.HR; const rc = pa ? (s.H + s.BB + s.HBP) * (tb + 0.5 * s.SB) / pa : 0; return { id, s, v: rc + s.RBI * 0.15 + s.R * 0.1 }; }).sort((a, b) => b.v - a.v).slice(0, 5);
-    const pits = Object.entries(S.seasonPit).filter(([id, s]) => teamLeague(s.team) === lg && s.OUTS >= 20 * g / 10).map(([id, s]) => { const ip = s.OUTS / 3, era = s.OUTS ? s.ER * 27 / s.OUTS : 9; return { id, s, v: 6 * s.W - 2 * s.L + 4 * s.SV + ip * (4.5 - era) * 0.35 + s.K / 8 }; }).sort((a, b) => b.v - a.v).slice(0, 5);
-    const gg = []; for (let f = 2; f <= 9; f++) { const cands = Object.keys(S.seasonBat).filter(id => teamLeague(S.seasonBat[id].team) === lg && hasFld(id, f) && S.seasonBat[id].G >= g * 0.5).map(id => ({ id, r: fieldVal(id, f, F.RNGR, 5), e: fieldVal(id, f, F.ER, 99), inn: fieldVal(id, f, F.INN, 0) })).sort((a, b) => a.r - b.r || a.e - b.e || b.inn - a.inn); if (cands[0]) gg.push({ f, id: cands[0].id }); }
-    const mgr = D.teams.filter(t => t[T.LG] === lg).map(t => { const c = t[T.CODE], s = S.teams[c], n = s.w + s.l; const real = num(t[T.RW]) / (num(t[T.RW]) + num(t[T.RL])); return { c, v: n ? (s.w / n - real) * n : 0, rec: s.w + '-' + s.l }; }).sort((a, b) => b.v - a.v)[0];
-    const sel = (key, cands, label, fmt) => { const pickId = S.awards[lg + '|' + key]; const chosen = pickId && cands.find(c => c.id === pickId) ? pickId : (cands[0] ? cands[0].id : ''); return `<div class="aw"><b>${label}</b> <select onchange="S.awards['${lg}|${key}']=this.value;saveAll();UI.refresh()">${cands.map((c, i) => `<option value="${c.id}"${c.id === chosen ? ' selected' : ''}>${i + 1}. ${esc(fullName(c.id))} (${friendlyCode(c.s.team)}) · ${esc(fmt(c.s))}</option>`).join('')}</select>${pickId && pickId !== (cands[0] && cands[0].id) ? "<small> commissioner's pick</small>" : ''}</div>`; };
-    h += `<div class="panel"><div class="ph">${esc(leagueName(lg))}</div>
-      ${sel('mvp', bats, 'Most Valuable Player', s => `${avg3(s.H, s.AB)}, ${s.HR} HR, ${s.RBI} RBI, ${s.R} R`)}
-      ${sel('cy', pits, 'Cy Young', s => `${s.W}-${s.L}${s.SV ? ', ' + s.SV + ' SV' : ''}, ${s.OUTS ? fmt2(s.ER * 27 / s.OUTS) : '-'} ERA, ${s.K} K`)}
-      <div class="aw"><b>Gold Gloves</b> <small>(from the fielding ratings, regulars only)</small><br>${gg.map(x => `<span class="ggl">${posName(x.f)} ${esc(lastName(x.id))}</span>`).join(' ') || '<small>not yet</small>'}</div>
-      ${mgr && mgr.v > 0 ? `<div class="aw"><b>Manager of the Year</b> ${esc(teamFull(mgr.c))} <small>(${mgr.rec}, ${mgr.v.toFixed(1)} wins above their real pace)</small></div>` : ''}
-    </div>`;
-  }
-  return h + '</div>';
-}
 
 // ---------- 4. LINEUPS ANNOUNCED ----------
 async function announceLineups() {

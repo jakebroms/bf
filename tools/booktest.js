@@ -1,7 +1,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const src = path.join(__dirname, '..', 'src'); const store = {};
 const ctx = { console, setTimeout, clearTimeout, localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } }, document: { getElementById: () => null, querySelectorAll: () => [], addEventListener: () => {} }, navigator: {} }; ctx.window = ctx; vm.createContext(ctx);
-for (const f of ['data.js', 'sound.js', 'core.js', 'play.js', 'manage.js', 'field.js', 'extras.js', 'gate.js']) { if (f === 'extras.js') vm.runInContext('var Actions = {}; var $ = () => null; var busy = false; function runAction(){}', ctx); vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }); }
+for (const f of ['data.js', 'sound.js', 'core.js', 'play.js', 'manage.js', 'field.js', 'extras.js', 'gate.js', 'stats.js']) { if (f === 'extras.js') vm.runInContext('var Actions = {}; var $ = () => null; var busy = false; function runAction(){}', ctx); vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f }); }
 vm.runInContext(`const UI = { popRoll: async () => rnd1000(), popReveal(){}, popInfo(){}, popResult(){}, decide: async () => true, confirm: async () => true, alert(){}, toast(){}, soloRoll: async () => rnd1000(), showDice(){}, placeBall(){}, ballToMound(){}, animateDice: async () => {}, refresh(){}, pop: null }; loadAll(); S = newSeason(); G = newGame();`, ctx);
 (async () => { await vm.runInContext(`(async () => {
   const codes = {}; let bad = 0;

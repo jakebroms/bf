@@ -657,42 +657,6 @@ function scheduleScreen() {
   });
   root.innerHTML = h + '</table></div>';
 }
-function standingsScreen() {
-  const root = $('screen'); let h = `<div class="pane"><h2>1977 replay standings</h2><div class="stand">`;
-  for (const d of standingsData()) {
-    h += `<table class="data"><tr><th class="l">${esc(d.title)}</th><th>W</th><th>L</th><th>Pct</th><th>GB</th><th>Real 1977</th></tr>${d.teams.map(t => `<tr><td class="l">${esc(t.name)}</td><td>${t.w}</td><td>${t.l}</td><td>${t.pct}</td><td>${t.gb}</td><td class="small">${t.real}</td></tr>`).join('')}</table>`;
-  }
-  h += `</div><div class="results"><h3>Results</h3><table class="data"><tr><th>#</th><th>Game</th><th>Score</th><th>W</th><th>L</th><th>S</th><th>Line</th></tr>${S.results.slice().reverse().slice(0, 200).map(r => `<tr><td>${r.game}</td><td>${esc(r.label)}</td><td>${r.away} ${r.ra}, ${r.home} ${r.rh}</td><td>${esc(r.wp)}</td><td>${esc(r.lp)}</td><td>${esc(r.sv)}</td><td class="mono small">${esc(r.line)}</td></tr>`).join('')}</table></div>`;
-  h += raceHtml();
-  h += `<div class="btnrow"><button class="btn warn" onclick="Actions.restartSeason()">Restart season</button></div></div>`;
-  root.innerHTML = h;
-}
-function leadersScreen() {
-  const root = $('screen'); let h = `<div class="pane"><h2>1977 leaders</h2>` + awardsHtml() + `<p class="small">AVG, OBP, SLG and OPS: 3.1 plate appearances per team game; ERA and WHIP: 1 inning per team game.</p>`;
-  for (const lg of leagueList()) {
-    h += `<h3 class="lgh">${leagueName(lg)}</h3><div class="ldgrid">`;
-    for (const [k, s] of LEADER_DEFS) { const t = leaderTable(k, s, lg); h += `<table class="data ld"><tr><th colspan="3" class="l">${esc(t.title)}</th></tr>${t.rows.map((r, i) => `<tr><td>${i + 1}</td><td class="l">${esc(r.name)}</td><td class="r">${r.v}</td></tr>`).join('') || '<tr><td colspan="3" class="small">no qualifiers yet</td></tr>'}</table>`; }
-    h += `</div><table class="data"><tr><th class="l">Team</th><th>W</th><th>L</th><th>R</th><th>HR</th><th>AVG</th><th>SB</th><th>ERA</th><th>RA</th><th>E</th></tr>${teamLeaders(lg).map(t => `<tr><td class="l">${esc(t.name)}</td><td>${t.w}</td><td>${t.l}</td><td>${t.r}</td><td>${t.hr}</td><td>${t.avg}</td><td>${t.sb}</td><td>${t.era}</td><td>${t.ra}</td><td>${t.e}</td></tr>`).join('')}</table>`;
-  }
-  h += recordsHtml();
-  root.innerHTML = h + '</div>';
-}
-function recordsHtml() {
-  const R = S.records || {}; const row = (k, t) => R[k] ? `<tr><td class="l"><b>${t}</b></td><td>${R[k].v}${R[k].extra && !String(R[k].extra).startsWith(String(R[k].v)) ? '' : ''}</td><td class="l">${esc(R[k].who)}</td><td class="l small">${esc(R[k].label)}${R[k].extra ? ' · ' + esc(R[k].extra) : ''}</td></tr>` : '';
-  const noh = (R.nohit || []).map(n => `<tr><td class="l"><b style="color:#c00">NO-HITTER</b></td><td></td><td class="l">${esc(n.who)}</td><td class="l small">${esc(n.label)} · ${n.walks} walks</td></tr>`).join('');
-  return `<h3 class="lgh">Season records</h3><table class="data"><tr><th class="l">Record</th><th>Mark</th><th class="l">Who</th><th class="l">Game</th></tr>${noh}${row('crowd', 'Biggest crowd')}${row('longhr', 'Longest home run')}${row('hits', 'Most hits in a game')}${row('hr', 'Most homers in a game')}${row('rbi', 'Most RBI in a game')}${row('sb', 'Most steals in a game')}${row('k', 'Most strikeouts by a pitcher')}${row('runs', 'Most runs by a team')}${row('hitsteam', 'Most hits by a team')}${row('blowout', 'Biggest margin')}${row('innings', 'Longest game (innings)')}</table><div class="small">Games played ${R.games || 0} · shutouts ${R.shutouts || 0} · extra-inning games ${R.extras || 0} · walk-off wins ${R.walkoffs || 0}</div>`;
-}
-function seasonScreen() {
-  const root = $('screen'); const teams = D.teams.map(t => t[T.CODE]);
-  let h = `<div class="pane"><h2>Season stats</h2><div class="btnrow"><label>Team <select onchange="seasonTeam=this.value;UI.refresh()"><option value="">All</option>${teams.map(t => `<option${seasonTeam === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label><button class="mini" onclick="Actions.exportCSV('bat')">Export batting (CSV)</button><button class="mini" onclick="Actions.exportCSV('pit')">Export pitching (CSV)</button><button class="mini" onclick="Actions.exportCSV('results')">Export results (CSV)</button><span class="small">CSV files open in Excel.</span></div>`;
-  const bats = Object.entries(S.seasonBat).filter(([id, s]) => !seasonTeam || s.team === seasonTeam).sort((a, b) => a[1].team.localeCompare(b[1].team) || b[1].AB - a[1].AB);
-  h += `<h3>Batting</h3><table class="data"><tr><th class="l">Player</th><th>Tm</th><th>G</th><th>AB</th><th>R</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>RBI</th><th>BB</th><th>K</th><th>SB</th><th>CS</th><th>E</th><th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th><th title="current hitting streak (best)">Streak</th></tr>`;
-  for (const [id, s] of bats) { const ob = obpOf(s), sl = slgOf(s); h += `<tr><td class="l">${esc(s.name)}</td><td>${friendlyCode(s.team)}</td><td>${s.G}</td><td>${s.AB}</td><td>${s.R}</td><td>${s.H}</td><td>${s['2B']}</td><td>${s['3B']}</td><td>${s.HR}</td><td>${s.RBI}</td><td>${s.BB}</td><td>${s.K}</td><td>${s.SB}</td><td>${s.CS}</td><td>${s.E}</td><td>${avg3(s.H, s.AB)}</td><td>${s.AB ? fmt3(ob) : '---'}</td><td>${s.AB ? fmt3(sl) : '---'}</td><td>${s.AB ? fmt3(ob + sl) : '---'}</td><td>${s.streak || 0}${s.best ? ' (' + s.best + ')' : ''}</td></tr>`; }
-  const pits = Object.entries(S.seasonPit).filter(([id, s]) => !seasonTeam || s.team === seasonTeam).sort((a, b) => a[1].team.localeCompare(b[1].team) || b[1].OUTS - a[1].OUTS);
-  h += `</table><h3>Pitching</h3><table class="data"><tr><th class="l">Pitcher</th><th>Tm</th><th>G</th><th>GS</th><th>W</th><th>L</th><th>SV</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>K</th><th>HR</th><th>CG</th><th>SHO</th><th>ERA</th><th>WHIP</th></tr>`;
-  for (const [id, s] of pits) h += `<tr><td class="l">${esc(s.name)}</td><td>${friendlyCode(s.team)}</td><td>${s.G}</td><td>${s.GS}</td><td>${s.W}</td><td>${s.L}</td><td>${s.SV}</td><td>${ipTxt(s.OUTS)}</td><td>${s.H}</td><td>${s.R}</td><td>${s.ER}</td><td>${s.BB}</td><td>${s.K}</td><td>${s.HR}</td><td>${s.CG}</td><td>${s.SHO}</td><td>${s.OUTS ? fmt2(s.ER * 27 / s.OUTS) : '-.--'}</td><td>${s.OUTS ? fmt2((s.H + s.BB) * 3 / s.OUTS) : '-.--'}</td></tr>`;
-  root.innerHTML = h + '</table>' + gateHtml() + '</div>';
-}
 function boxHtml(a) {
   const ni = Math.max(9, a.innRuns[0].length);
   let h = `<div class="box"><div class="box-t">${a.teams[0]} ${a.score[0]}, ${a.teams[1]} ${a.score[1]}  ·  ${esc(a.status)}</div><div class="box-s">${esc(a.names[0])} at ${esc(a.names[1])}  ·  ${esc(a.park)}${a.label ? '  ·  ' + esc(a.label) : ''}</div>`;
@@ -758,23 +722,6 @@ Actions.edReset = async () => {
   const r = D.staff[IX.staff[edTeam]]; if (r) S.staff[edTeam] = { rot: String(r[1] || '').split(',').filter(Boolean), closer: r[2] || '', pen: String(r[3] || '').split(',').filter(Boolean) };
   saveAll(); UI.refresh();
 };
-function playoffsScreen() {
-  const root = $('screen'); const po = S.playoffs || (S.playoffs = poDefaults());
-  const teams = lg => D.teams.filter(t => t[T.LG] === lg).map(t => t[T.CODE]);
-  const seedSel = (lg, i) => `<select class="poseed" data-lg="${lg}" data-i="${i}"><option value=""></option>${teams(lg).map(c => `<option${(po.typed[lg] || [])[i] === c ? ' selected' : ''}>${c}</option>`).join('')}</select>`;
-  const n = clamp(num(po.n) || 2, 1, 8);
-  let h = `<div class="pane"><h2>Playoffs</h2><p class="small">Pick teams per league and series lengths (1977: 2 teams, LCS best of 5, World Series best of 7). Type seeds or leave them blank to use the standings, click Set up bracket, then Play next playoff game. Playoff games keep their own box scores and don't count in season stats.</p>
-  <div class="pogrid"><div><label>Teams per league <input id="poN" type="number" min="1" max="8" value="${n}"></label>
-  <label>LCS best of <input id="poB4" type="number" min="1" max="9" value="${po.bo[4]}"></label><label>Division Series best of <input id="poB3" type="number" min="1" max="9" value="${po.bo[3]}"></label><label>Wild Card best of <input id="poB2" type="number" min="1" max="9" value="${po.bo[2]}"></label>
-  <label>World Series best of <input id="poWS" type="number" min="1" max="9" value="${po.ws}"></label><label>WS home field <select id="poHF">${['AL', 'NL', 'Better record'].map(v => `<option${po.hf === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label></div>
-  <div><b>AL seeds</b>${Array.from({ length: n }, (_, i) => `<div>${i + 1}. ${seedSel('AL', i)}</div>`).join('')}</div><div><b>NL seeds</b>${Array.from({ length: n }, (_, i) => `<div>${i + 1}. ${seedSel('NL', i)}</div>`).join('')}</div></div>
-  <div class="btnrow"><button class="btn go" onclick="Actions.poSetup()">Set up bracket</button><button class="btn" onclick="Actions.poPlay()"${po.mode ? '' : ' disabled'}>Play next playoff game</button><button class="btn warn" onclick="Actions.poReset()">Clear bracket</button></div>`;
-  if (po.mode) {
-    h += `<h3>Bracket</h3><table class="data"><tr><th class="l">Round</th><th>#</th><th class="l">Higher seed</th><th>W</th><th class="l">Lower seed</th><th>W</th><th class="l">Status</th></tr>${po.rows.map(r => `<tr><td class="l">${esc(r.round)}</td><td>${r.series}</td><td class="l">${esc(teamFull(r.hi))}</td><td>${r.hiW}</td><td class="l">${esc(teamFull(r.lo))}</td><td>${r.loW}</td><td class="l">${esc(r.status)}</td></tr>`).join('')}</table>`;
-    if (po.champ) h += `<p><b>${esc(teamFull(po.champ))} are the champions!</b></p>`;
-  }
-  root.innerHTML = h + '</div>';
-}
 function poReadForm() {
   const po = S.playoffs; po.n = clamp(num($('poN').value) || 2, 1, 8); po.bo[4] = num($('poB4').value) || 5; po.bo[3] = num($('poB3').value) || 5; po.bo[2] = num($('poB2').value) || 3; po.ws = num($('poWS').value) || 7; po.hf = $('poHF').value;
   po.typed = { AL: [], NL: [] }; document.querySelectorAll('.poseed').forEach(s => { if (s.value) po.typed[s.dataset.lg][num(s.dataset.i)] = s.value; });
@@ -783,14 +730,21 @@ function poReadForm() {
 Actions.poSetup = () => { poReadForm(); setupBracket(); UI.refresh(); UI.toast('Bracket set. Click Play next playoff game.'); };
 Actions.poPlay = () => { if (busy) return; runAction(async () => { if (await playNextPlayoff()) curScreen = 'game'; }, { undo: false }); };
 Actions.poReset = () => { runAction(async () => { await resetPlayoffs(); }, { undo: false }); };
+const OPTION_GROUPS = [
+  ['The season', ['Games', 'Lineups', 'Injuries', 'Pitcher rest days', 'Tired pitcher cutoff', 'DH rule', 'Splits', 'Park effects', 'Weather', 'Rainouts']],
+  ['How a play goes', ['Click to play results', 'Card lookup', 'Solo dice mode', 'Mode', 'Send/hold prompts', 'Pickoffs', 'Computer steals', 'Surprise steals', 'Momentum', 'Pitcher daily form', 'Warm-up tosses', 'At the wall']],
+  ['Pop-ups', ['Pop-ups', 'Fielding check pop-ups', 'Runner pop-ups', 'Steal and pickoff pop-ups', 'Big lead pop-ups', 'Close plays at first', 'Manager arguments', 'The pivot', 'Plays at the plate', 'Error pop-ups']],
+  ['Looks and sound', ['Ballpark look', 'Lineup announcements', 'Bouton tribute']],
+];
 function optionsScreen() {
-  const root = $('screen');
-  let h = `<div class="pane"><h2>Options</h2><table class="data opts"><tr><th class="l">Option</th><th class="l">Setting</th><th class="l">What it does</th></tr>`;
-  for (const d of OPTION_DEFS) {
-    const choices = OPTION_CHOICES[d.name] || ['On', 'Off']; const v = opt(d.name);
-    h += `<tr><td class="l"><b>${esc(d.name)}</b></td><td class="l"><select onchange="Actions.setOpt('${esc(d.name)}',this.value)">${choices.map(c => `<option${c === v ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></td><td class="l small">${esc(d.help)}</td></tr>`;
-  }
-  h += `</table><h3>Save file</h3><p class="small">Everything (season, game in progress, lineups, options) is saved in this browser automatically. Export a copy to keep it safe or move it to another computer.</p><div class="btnrow"><button class="btn" onclick="Actions.exportSave()">Export save (JSON)</button><label class="btn">Import save <input type="file" accept=".json,application/json" style="display:none" onchange="Actions.importSave(this.files[0])"></label><button class="btn warn" onclick="Actions.resetOptions()">Reset options to defaults</button></div></div>`;
+  const root = $('screen'); const placed = new Set();
+  let h = `<div class="pane stats">` + heroHtml('Options', 'How the game plays. Everything is saved automatically' + (Net.available && Net.user ? ', here and to your account' : '') + '.');
+  const row = d => { const choices = OPTION_CHOICES[d.name] || ['On', 'Off']; const v = opt(d.name); placed.add(d.name);
+    return `<div class="optrow"><div class="opt-n">${esc(d.name)}</div><div class="opt-s"><select onchange="Actions.setOpt('${esc(d.name)}',this.value)">${choices.map(c => `<option${c === v ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div><div class="opt-h">${esc(d.help)}</div></div>`; };
+  const groups = OPTION_GROUPS.map(([t, names]) => [t, names.map(n => OPTION_DEFS.find(d => d.name === n)).filter(Boolean)]);
+  const rest = OPTION_DEFS.filter(d => !groups.some(g => g[1].includes(d))); if (rest.length) groups.push(['Other', rest]);
+  for (const [title, defs] of groups) h += `<div class="optcard"><div class="stcard-h">${esc(title)}</div>${defs.map(row).join('')}</div>`;
+  h += `<div class="btnrow end"><button class="btn warn" onclick="Actions.resetOptions()">Put every option back to normal</button></div></div>`;
   root.innerHTML = h;
 }
 Actions.setOpt = (nm, v) => { O[nm] = v; saveAll(); UI.refresh(); };
@@ -843,14 +797,6 @@ function scorebookScreen() {
   if (a) { const key = bookPick === 'current' ? G.gameNo : bookPick; h += `<h3>Notes on this game</h3><textarea class="notes" rows="3" placeholder="Your own notes..." onchange="S.notes[${key}]=this.value;saveAll();Net.saveNotes(${key},this.value)">${esc(S.notes[key] || '')}</textarea>`; }
   root.innerHTML = h + '</div>';
 }
-Actions.exportCSV = what => {
-  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; let rows = [];
-  if (what === 'bat') { rows.push(['Player', 'Team', 'G', ...BAT_COLS, 'AVG', 'OBP', 'SLG', 'OPS', 'Streak', 'Best streak']); for (const id in S.seasonBat) { const s = S.seasonBat[id]; const ob = obpOf(s), sl = slgOf(s); rows.push([s.name, s.team, s.G, ...BAT_COLS.map(c => s[c]), s.AB ? (s.H / s.AB).toFixed(3) : '', s.AB ? ob.toFixed(3) : '', s.AB ? sl.toFixed(3) : '', s.AB ? (ob + sl).toFixed(3) : '', s.streak || 0, s.best || 0]); } }
-  else if (what === 'pit') { rows.push(['Pitcher', 'Team', 'G', 'IP', ...PIT_COLS, 'ERA', 'WHIP']); for (const id in S.seasonPit) { const s = S.seasonPit[id]; rows.push([s.name, s.team, s.G, ipTxt(s.OUTS), ...PIT_COLS.map(c => s[c]), s.OUTS ? (s.ER * 27 / s.OUTS).toFixed(2) : '', s.OUTS ? ((s.H + s.BB) * 3 / s.OUTS).toFixed(2) : '']); } }
-  else { rows.push(['Game', 'Label', 'Away', 'Away runs', 'Home', 'Home runs', 'Winning pitcher', 'Losing pitcher', 'Save', 'Line score', 'Notes']); for (const r of S.results) rows.push([r.game, r.label, r.away, r.ra, r.home, r.rh, r.wp, r.lp, r.sv, r.line, S.notes[r.game] || '']); }
-  const csv = rows.map(r => r.map(q).join(',')).join('\r\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' })); a.download = 'BallFive_1977_' + what + '.csv'; a.click();
-};
 
 // ======================= account and database =======================
 let acctMode = 'login', acctData = null;
