@@ -374,6 +374,8 @@ body.dark .key { background: #262c36; color: #e6e6e6; border-color: #4a5366; } b
 .gz-side { font-size: calc(13px * var(--fs)); border-left: 1px solid #bbb; padding-left: 16px; } .gz-side div { margin: 2px 0; }
 table.gz-stand, table.gz-line { border-collapse: collapse; width: 100%; font-size: calc(12px * var(--fs)); margin: 4px 0 8px; } table.gz-stand td, table.gz-stand th, table.gz-line td, table.gz-line th { padding: 1px 4px; text-align: center; border-bottom: 1px solid #ddd; } table.gz-stand .l, table.gz-line .l { text-align: left; }
 .box-tail, .gz-tail { margin: 4px 0 8px; font-style: italic; }
+.gz-mu-d { font-size: calc(11px * var(--fs)); color: #555; font-style: italic; margin: 2px 0 4px; }
+.gz-mu { padding: 4px 0; border-bottom: 1px dotted #b9a982; } .gz-mu-t { font-weight: bold; } .gz-mu-p { font-size: calc(12px * var(--fs)); } .gz-rec { font-weight: bold; }
 .gz-ld { margin: 6px 0; line-height: 1.4; } .gz-ld .gz-lg { display: block; font-weight: bold; }
 body.dark .gazette { background: #ece6d6; color: #222; }
 /* ---------- the race ---------- */
@@ -4457,6 +4459,18 @@ function makePaper() {
   const wx = windText();
   return { game: G.gameNo, date: dateTxt, label: '', head, deck, story: P, notes, teams: G.teams.slice(), score: G.score.slice(), park: parkName(), weather: wx, line: G.innRuns.map(r => r.slice(0, G.inn)), exhib: !!G.exhib, playoff: G.playoffRow >= 0, att: G.att, time: G.time || timeOfGame(), dh: G.dh };
 }
+// the day's pitching matchups: the next date on the schedule, with each probable starter and his record in this replay
+function matchupsHtml() {
+  const ni = typeof nextSchedIdx === 'function' ? nextSchedIdx() : -1; if (ni < 0) return '';
+  const date = D.schedule[ni][SC.DATE]; const games = [];
+  for (let i = ni; i < D.schedule.length; i++) { const r = D.schedule[i]; if (r[SC.DATE] !== date) break; if (i in S.played || ppdPending(i)) continue; games.push(r); }
+  if (!games.length) return '';
+  const useReal = opt('Lineups') === 'Real for each game';
+  const starter = (gid, team, side) => { const rl = useReal ? realLURow(gid, team) : null; let id = rl ? rl[2] : ''; if (!id || !isPit(id)) { try { id = pickStarter(side, team, null); } catch (e) { id = ''; } } return id; };
+  const line = id => id && isPit(id) ? `${esc(lastName(id))} <span class="gz-rec">(${replayPit(id, 'W')}-${replayPit(id, 'L')})</span>` : 'TBA';
+  const hand = id => id && isPit(id) ? ' <span class="small">' + throws_(id) + 'HP</span>' : '';
+  return `<h4>Today's Matchups</h4><div class="gz-mu-d">${esc(date)}</div>${games.map(r => { const ap = starter(r[SC.GID], r[SC.AWAY], 0), hp = starter(r[SC.GID], r[SC.HOME], 1); return `<div class="gz-mu"><div class="gz-mu-t">${esc(nickOf(r[SC.AWAY]))} at ${esc(nickOf(r[SC.HOME]))}</div><div class="gz-mu-p">${line(ap)}${hand(ap)} vs ${line(hp)}${hand(hp)}</div></div>`; }).join('')}`;
+}
 function paperHtml(pp) {
   const date = pp.date + ', ' + seasonYr();
   const others = (S.results.filter(r => r.date === pp.date && r.game !== pp.game).map(r => `<div>${esc(nickOf(r.away))} ${r.ra}, ${esc(nickOf(r.home))} ${r.rh} <span class="small">(W: ${esc(r.wp.split(' ').slice(-1)[0])}${r.dh ? ', DH ' + r.dh : ''})</span></div>`).join('') + (S.rainouts || []).filter(r => r.date === pp.date).map(r => `<div>${esc(nickOf(r.away))} at ${esc(nickOf(r.home))} <span class="small">rained out, made up ${esc(r.makeupDate)}</span></div>`).join('')) || '<div class="small">No other games.</div>';
@@ -4468,7 +4482,7 @@ function paperHtml(pp) {
   return `<div class="gazette"><div class="gz-mast"><div class="gz-vol">Vol. ${seasonYr() - 1976} · No. ${pp.game}</div><div class="gz-title">The Ball Five Gazette</div><div class="gz-date">${esc(date)} · ${pp.exhib ? 'Exhibition' : pp.playoff ? 'Playoffs' : 'Baseball'}${pp.weather ? ' · ' + esc(pp.weather) : ''}</div></div>
     <h1 class="gz-head">${esc(pp.head)}</h1>${pp.deck ? `<div class="gz-deck">${esc(pp.deck)}</div>` : ''}
     <div class="gz-cols"><div class="gz-story">${pp.story.map(p => '<p>' + esc(p) + '</p>').join('')}${lineTbl}${pp.att || pp.time ? `<div class="small gz-tail">${pp.att ? 'Att. ' + fmtNum(pp.att) + '. ' : ''}${pp.time ? 'T ' + pp.time + '.' : ''}</div>` : ''}${pp.notes.length ? '<h4>Notes</h4>' + pp.notes.map(n => '<p class="gz-note">' + esc(n) + '</p>').join('') : ''}</div>
-    <div class="gz-side"><h4>Around the league</h4>${others}<h4>Standings</h4>${standBox}<h4>Leaders</h4><div class="gz-ld"><span class="gz-lg">AL</span><i>Average:</i> ${ldr('AL', 'AVG')}<br><i>Homers:</i> ${ldr('AL', 'HR')}</div><div class="gz-ld"><span class="gz-lg">NL</span><i>Average:</i> ${ldr('NL', 'AVG')}<br><i>Homers:</i> ${ldr('NL', 'HR')}</div></div></div></div>`;
+    <div class="gz-side"><h4>Around the league</h4>${others}<h4>Standings</h4>${standBox}<h4>Leaders</h4><div class="gz-ld"><span class="gz-lg">AL</span><i>Average:</i> ${ldr('AL', 'AVG')}<br><i>Homers:</i> ${ldr('AL', 'HR')}</div><div class="gz-ld"><span class="gz-lg">NL</span><i>Average:</i> ${ldr('NL', 'AVG')}<br><i>Homers:</i> ${ldr('NL', 'HR')}</div>${matchupsHtml()}</div></div></div>`;
 }
 let paperPick = 'latest';
 function paperScreen() {
