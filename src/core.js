@@ -59,6 +59,7 @@ function friendlyCode(t) { return ({ NYA:'NYY', NYN:'NYM', LAN:'LAD', SLN:'STL',
 
 // ---- options ----
 const OPTION_DEFS = D.options.map(o => ({ name: o[0], def: String(o[1]), help: o[2] || '' }));
+OPTION_DEFS.push({ name: 'Lineup announcements', def: 'On', help: 'On: before each game the public-address announcer reads both starting lineups over the organ and the crowd (click to skip). Off: straight to the warm-up tosses.' });
 const OPTION_CHOICES = {
   'Games': ['1977 schedule', 'Pick teams'],
   'Lineups': ['Real for each game', 'My saved lineups', 'Typical'],
@@ -73,6 +74,7 @@ const OPTION_CHOICES = {
   'Mode': ['Basic', 'Advanced'],
   'Splits': ['Real', 'Blended'],
   'DH rule': ["Home team's league", 'Always', 'Never'],
+  'Lineup announcements': ['On', 'Off'],
 };
 let O = {};
 function optDefaults() { const o = {}; OPTION_DEFS.forEach(d => o[d.name] = d.def); return o; }
@@ -98,7 +100,7 @@ const findMode = () => !gSim && opt('Card lookup') === 'Find it yourself' && G.m
 // ---- season (persistent) and game state ----
 let S = null, G = null;
 function newSeason() {
-  const s = { teams: {}, played: {}, results: [], seasonBat: {}, seasonPit: {}, archive: {}, logAll: {}, pitRest: {}, myLU: {}, staff: {}, gameNo: 0, playoffs: null, records: {}, notes: {} };
+  const s = { teams: {}, played: {}, results: [], seasonBat: {}, seasonPit: {}, archive: {}, logAll: {}, pitRest: {}, myLU: {}, staff: {}, gameNo: 0, playoffs: null, records: {}, notes: {}, papers: {}, raceLog: [], weekly: {}, weeklyP: {}, awards: {} };
   D.teams.forEach(t => { s.teams[t[T.CODE]] = { w: 0, l: 0, next: 0 }; });
   D.mylu.forEach(r => { s.myLU[r[0] + '|' + r[1]] = lineupFromRow(r); });
   D.staff.forEach(r => { s.staff[r[0]] = { rot: String(r[1] || '').split(',').filter(Boolean), closer: r[2] || '', pen: String(r[3] || '').split(',').filter(Boolean) }; });
@@ -123,7 +125,7 @@ function newGame() {
     boxBat: [], boxPit: [], log: [], pa: [], longHR: null,
     pend: null, misses: 0,
     dice: null, loc: null, rollTxt: '', playTxt: '', extra: '',
-    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '',
+    ball: null, xshow: null, leadSig: '', rollLeads: true, title: '', intro: 0,
   };
 }
 
@@ -222,7 +224,8 @@ const FENCES = [
   ['Arlington', [330, 400, 330]], ['Candlestick', [335, 400, 335]], ['Atlanta', [330, 402, 330]], ['Dodger', [330, 395, 330]], ['Anaheim', [333, 404, 333]],
   ['Oakland', [330, 400, 330]], ['Yankee', [312, 417, 310]],
 ];
-function fenceDist(f) { const park = parkName(); let a = [330, 405, 330]; for (const [k, v] of FENCES) if (park.includes(k)) a = v; if (f < 7 || f > 9) f = 8; return a[f - 7]; }
+let gParkOverride = null;
+function fenceDist(f, parkIn) { const park = parkIn || gParkOverride || parkName(); let a = [330, 405, 330]; for (const [k, v] of FENCES) if (park.includes(k)) a = v; if (f < 7 || f > 9) f = 8; return a[f - 7]; }
 function rollWeather() {
   G.weather = null; if (opt('Weather') === 'Off') return;
   const mon = G.dayNo > 0 ? new Date(seasonYr(), 0, G.dayNo).getMonth() + 1 : 7;
@@ -618,7 +621,7 @@ function loadAll() {
     if (raw) {
       const o = JSON.parse(raw);
       if (o.O) Object.assign(O, o.O);
-      if (o.S) { S = Object.assign(newSeason(), o.S); if (!S.logAll) S.logAll = {}; if (!S.records) S.records = {}; if (!S.notes) S.notes = {}; }
+      if (o.S) { S = Object.assign(newSeason(), o.S); if (!S.logAll) S.logAll = {}; if (!S.records) S.records = {}; if (!S.notes) S.notes = {}; if (!S.papers) S.papers = {}; if (!S.raceLog) S.raceLog = []; if (!S.weekly) S.weekly = {}; if (!S.weeklyP) S.weeklyP = {}; if (!S.awards) S.awards = {}; }
       if (o.G) { G = Object.assign(newGame(), o.G); }
     }
   } catch (e) { console.warn('load failed', e); }

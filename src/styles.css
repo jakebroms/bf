@@ -341,3 +341,44 @@ body.dark .key { background: #262c36; color: #e6e6e6; border-color: #4a5366; } b
 .acct form label { display: block; margin: 8px 0; font-weight: bold; max-width: 380px; } .acct form input { display: block; width: 100%; font-size: calc(16px * var(--fs)); padding: 8px; margin-top: 3px; border: 1px solid #99a; border-radius: 4px; }
 .acct-err { color: #c00; min-height: 18px; margin: 4px 0; }
 .sync { color: #fff; font-size: calc(12px * var(--fs)); padding: 4px 8px; cursor: pointer; opacity: .9; }
+
+/* ---------- the Gazette ---------- */
+.gazette { background: #f7f3ea; color: #222; border: 1px solid #c8bfa8; padding: 18px 26px; font-family: Georgia, 'Times New Roman', serif; max-width: 1100px; }
+.gz-mast { text-align: center; border-top: 3px double #222; border-bottom: 3px double #222; padding: 6px 0; margin-bottom: 10px; }
+.gz-title { font-family: 'Old English Text MT', 'Times New Roman', serif; font-size: calc(40px * var(--fs)); font-weight: bold; letter-spacing: 1px; }
+.gz-vol, .gz-date { font-size: calc(11px * var(--fs)); text-transform: uppercase; letter-spacing: 1px; color: #444; }
+.gz-head { font-size: calc(32px * var(--fs)); line-height: 1.1; margin: 8px 0 4px; font-weight: bold; }
+.gz-deck { font-style: italic; font-size: calc(15px * var(--fs)); border-bottom: 1px solid #999; padding-bottom: 6px; margin-bottom: 10px; }
+.gz-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.gz-story p { font-size: calc(15px * var(--fs)); line-height: 1.5; margin: 0 0 10px; text-align: justify; } .gz-story p:first-child::first-letter { font-size: 2.6em; float: left; line-height: .9; padding-right: 4px; font-weight: bold; }
+.gz-story h4, .gz-side h4 { margin: 12px 0 4px; border-bottom: 1px solid #999; font-size: calc(13px * var(--fs)); text-transform: uppercase; letter-spacing: 1px; }
+.gz-note { font-size: calc(13px * var(--fs)) !important; margin: 0 0 4px !important; }
+.gz-side { font-size: calc(13px * var(--fs)); border-left: 1px solid #bbb; padding-left: 16px; } .gz-side div { margin: 2px 0; }
+table.gz-stand, table.gz-line { border-collapse: collapse; width: 100%; font-size: calc(12px * var(--fs)); margin: 4px 0 8px; } table.gz-stand td, table.gz-stand th, table.gz-line td, table.gz-line th { padding: 1px 4px; text-align: center; border-bottom: 1px solid #ddd; } table.gz-stand .l, table.gz-line .l { text-align: left; }
+.gz-ld { margin: 6px 0; line-height: 1.4; } .gz-ld b { display: block; }
+body.dark .gazette { background: #ece6d6; color: #222; }
+/* ---------- the race ---------- */
+.racebox { margin: 8px 0 14px; } .raceh { margin-bottom: 4px; } .race { width: 100%; max-width: 620px; display: block; border: 1px solid #ccc; border-radius: 6px; }
+.tag.magic { background: #1e3d2b; color: #fff; padding: 1px 8px; border-radius: 10px; font-size: calc(12px * var(--fs)); } .tag.clinch { background: #c9a227; color: #111; padding: 1px 8px; border-radius: 10px; font-weight: bold; } .tag.hot { background: #c00; color: #fff; padding: 1px 8px; border-radius: 10px; font-size: calc(12px * var(--fs)); }
+/* ---------- awards ---------- */
+.awgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.aw { padding: 5px 0; border-bottom: 1px dotted #ccc; } .aw b { color: var(--navy); display: inline-block; min-width: 170px; } .aw select { max-width: 100%; }
+.ggl { display: inline-block; background: #ffe9a8; border: 1px solid #c9a227; border-radius: 4px; padding: 1px 6px; margin: 2px 2px 0 0; font-size: calc(12px * var(--fs)); }
+body.dark .ggl { background: #5a4a10; }
+/* ---------- announcements ---------- */
+.pop.announce { text-align: center; } .ann-line { font-family: Rockwell, Georgia, serif; font-size: calc(24px * var(--fs)); font-weight: bold; padding: 18px 12px 6px; color: var(--navy); } .ann-sub { font-size: calc(14px * var(--fs)); padding: 0 12px 10px; color: #333; min-height: 20px; }
+body.dark .ann-line { color: #ffd23f; } body.dark .ann-sub { color: #ddd; }
+/* ---------- printable cards ---------- */
+.pcards { display: grid; grid-template-columns: repeat(auto-fill, 2.5in); gap: 10px; }
+.pcard { width: 2.5in; height: 3.5in; background: var(--cream); border: 3px solid #1b1b1b; border-radius: 8px; padding: 4px; font-family: 'Courier New', monospace; color: #1b1b1b; display: flex; flex-direction: column; break-inside: avoid; }
+.pc-top { display: flex; justify-content: space-between; font-family: Arial; font-size: 7.5px; font-weight: bold; color: var(--navy); } .pc-band { color: #fff; font-family: Rockwell, Georgia, serif; font-weight: bold; font-size: 12px; text-align: center; padding: 3px; margin: 2px 0; } .pc-info { font-family: Arial; font-size: 8px; text-align: center; margin-bottom: 2px; }
+.pcard .prow { display: grid; grid-template-columns: 1fr 52px 52px; font-size: 9.6px; line-height: 1.5; border-bottom: 1px dotted #b9a982; } .pcard .prow span:nth-child(2), .pcard .prow span:nth-child(3) { text-align: center; } .pcard .prow.pc-h { font-family: Arial; font-weight: bold; color: #7a6a48; font-size: 7px; border-bottom: 1px solid #7a6a48; }
+.pc-strip { margin-top: auto; background: var(--cream2); border: 1px solid #1b1b1b; text-align: center; font-weight: bold; font-size: 9px; padding: 2px; }
+.pcards .card.back { width: 2.5in; height: 3.5in; min-height: 0; overflow: hidden; font-size: 8px; cursor: default; break-inside: avoid; }
+.pcards .card.back .bbrand { font-size: 11px; margin-top: 2px; } .pcards .card.back .bname { font-size: 11px; margin-top: 4px; } .pcards .card.back .bsub { font-size: 7px; } .pcards .card.back .brat { font-size: 7px; padding: 2px; } .pcards .card.back .brat div span { width: 60px; } .pcards .card.back .backtbl { font-size: 7px; } .pcards .card.back .bfun { font-size: 6.5px; } .pcards .card.back .bfoot { display: none; } .pcards .card.back .bpanel { margin: 3px 1px; padding: 2px; } .pcards .card.back .bcity { font-size: 7px; margin: 2px 0; }
+body.dark .pcard { color: #1b1b1b; } body.dark .pc-top { color: #1f3864; }
+.mini.on { background: #ffcc00; font-weight: bold; }
+/* ---------- ballparks ---------- */
+.parkgrid { display: grid; grid-template-columns: minmax(360px, 560px) 1fr; gap: 20px; align-items: start; } .parkpic svg { width: 100%; border: 2px solid #274e13; border-radius: 6px; background: #e4ebd8; }
+@media (max-width: 900px) { .parkgrid, .gz-cols { grid-template-columns: 1fr; } }
+@media print { .pcards { gap: 0.1in; } .pcard, .pcards .card.back { box-shadow: none; } .gazette { border: none; } .race { display: none; } }

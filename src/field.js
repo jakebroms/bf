@@ -73,7 +73,7 @@ function parkSVG() {
   const bases = [[b1x, b1y], [300, b2y], [600 - b1x, b1y]];
   bases.forEach((b, i) => { s += `<rect id="base${i + 1}" x="${(b[0] - 6).toFixed(1)}" y="${(FY(b[1]) - 6).toFixed(1)}" width="12" height="12" transform="rotate(45 ${b[0].toFixed(1)} ${FY(b[1]).toFixed(1)})" fill="#fff" stroke="#555" stroke-width="0.8"/>`; });
   [[129, 7], [90, 8], [51, 9]].forEach(([th, f]) => { const [x, y] = polarXY(fenceAt(th) - 17, th); s += `<text x="${x.toFixed(1)}" y="${(FY(y) + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="bold" fill="#274e13" font-family="Arial">${fenceDist(f)}</text>`; });
-  s += `<text x="8" y="414" font-size="10" fill="#274e13" font-family="Arial" font-weight="bold">${esc(parkName())}</text>`;
+  s += `<text x="8" y="414" font-size="10" fill="#274e13" font-family="Arial" font-weight="bold">${esc(gParkOverride || parkName())}</text>`;
   return { svg: s, bases, b1x, b1y, b2y };
 }
 function fielderLabel(f, fid) {

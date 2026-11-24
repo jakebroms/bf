@@ -130,6 +130,11 @@ const Snd = {
       case 'walkoff': this.cheer(t, 6, 0.95, true); this.organ(t + 0.6, this.MELODY.charge, 180, 0.14); this.organ(t + 3.2, this.MELODY.fanfare, 140, 0.13); return 4;
       case 'warmup': for (let i = 0; i < 3; i++) this.pop(t + i * 0.42, 0.7); this.murmur(t, 0.12); return 1.3;
       case 'playball': this.organ(t, this.MELODY.fanfare, 140, 0.12); this.cheer(t + 1.2, 2.5, 0.45, true); return 2.5;
+      case 'pa': this.tone(t, 0.35, 660, { type: 'sine', gain: 0.12 }); this.tone(t + 0.3, 0.6, 880, { type: 'sine', gain: 0.12 }); return 0.9;
+      case 'name': this.cheer(t, 0.9, 0.22, false); return 0.4;
+      case 'star': this.cheer(t, 1.6, 0.42, true); return 0.6;
+      case 'cheer': this.cheer(t, 1.8, 0.4, true); return 0.8;
+      case 'murmur': this.murmur(t, 0.18); return 0.4;
       case 'tension': this.noise(t, 1.5, { type: 'bandpass', freq: 600, q: 1, gain: 0.12, attack: 0.5 }); return 0.5;
     }
     return 0;

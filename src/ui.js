@@ -180,6 +180,7 @@ Actions.rollDice = async () => {
   if (G.over) { UI.toast('Game over. Click Next game.'); return; }
   if (!G.teams[0]) { UI.toast('Click Load teams first.'); return; }
   if (G.pend) { if (G.pend.kind === 'X') UI.toast('Click the glowing fielder (or the pop-up) to roll the check.'); else UI.toast('Click the lit row on the card to play it.'); return; }
+  if (G.intro) { Actions.announce(); return; }
   if (G.pregame > 0) { Actions.pregameClick(); return; }
   await runAction(async () => {
     if (prePitchAction()) return;
@@ -338,8 +339,8 @@ function cardHtml(side, isPitSide, bid, pid, wB, wP, wX, pth, bside) {
     <div class="cstrip">${strip.map(s => `<div><small>${s[0]}</small><b>${s[1]}</b></div>`).join('')}</div>
   </div>`;
 }
-function cardBackHtml(side, id, isPitSide) {
-  const team = teamCode(side), c1 = teamColor(team, 1), c2 = teamColor(team, 2), yr = seasonYr();
+function cardBackHtml(side, id, isPitSide, teamOverride) {
+  const team = teamOverride || teamCode(side), c1 = teamColor(team, 1), c2 = teamColor(team, 2), yr = seasonYr();
   let hd, rv = [], pv = [], fun = '', head = fullName(id).toUpperCase(), sub1, rat = [];
   if (isPitSide) {
     hd = ['W', 'L', 'ERA', 'G', 'GS', 'CG', 'SV', 'IP', 'H', 'R', 'ER', 'HR', 'BB', 'SO', 'WHIP']; const br = backRow('P|' + id);
@@ -385,7 +386,7 @@ function cardBackHtml(side, id, isPitSide) {
   const blocks = isPitSide ? [[0, 1, 2, 3, 4], [7, 13, 12, 6, 14]] : [[0, 1, 2, 3, 6], [7, 8, 10, 12, 15]];
   const tbl = blocks.map(ix => `<table class="backtbl"><tr><th></th>${ix.map(i => '<th>' + hd[i] + '</th>').join('')}</tr><tr><td class="yr">${yr}</td>${ix.map(i => '<td>' + (rv.length ? rv[i] : '-') + '</td>').join('')}</tr><tr class="rep"><td class="yr">Replay</td>${ix.map(i => '<td>' + pv[i] + '</td>').join('')}</tr></table>`).join('');
   const first = '';
-  return `<div class="card back" style="background:${c1};border-color:${c2}" onclick="Actions.flipCard(${side})"><div class="bbrand">BALL FIVE BASEBALL</div><div class="bcity">${esc(teamCity(team).toUpperCase())} · ${yr}</div><div class="bname">${esc(head)}</div><div class="bsub">${esc(sub1)}</div><div class="brat"><div class="brat-h">BALL FIVE RATINGS</div>${rat.map(r => `<div><span>${esc(r[0])}</span>${esc(r[1])}</div>`).join('')}</div><div class="bpanel">${first}${tbl}${fun ? '<div class="bfun">' + fun + '</div>' : '<div class="bfun">(Real season line not in this file.)</div>'}</div><div class="bfoot">CLICK TO FLIP BACK</div></div>`;
+  return `<div class="card back" style="background:${c1};border-color:${c2}" ${teamOverride ? '' : `onclick="Actions.flipCard(${side})"`}><div class="bbrand">BALL FIVE BASEBALL</div><div class="bcity">${esc(teamCity(team).toUpperCase())} · ${yr}</div><div class="bname">${esc(head)}</div><div class="bsub">${esc(sub1)}</div><div class="brat"><div class="brat-h">BALL FIVE RATINGS</div>${rat.map(r => `<div><span>${esc(r[0])}</span>${esc(r[1])}</div>`).join('')}</div><div class="bpanel">${first}${tbl}${fun ? '<div class="bfun">' + fun + '</div>' : '<div class="bfun">(Real season line not in this file.)</div>'}</div><div class="bfoot">CLICK TO FLIP BACK</div></div>`;
 }
 function rosterOptions(side, selId, isPitList) {
   const team = teamCode(side); let opts = '';
@@ -508,6 +509,7 @@ function nextStep() {
   if (!G.teams[0] || !G.lineup[0].length) return { text: 'Start the 1977 season.', btn: 'LOAD TEAMS', act: () => Actions.loadTeams() };
   if (busy && !(UI.pop && UI.pop.waiting)) return { text: 'Playing it out...', btn: '', act: null };
   if (UI.pop && UI.pop.waiting) return { text: 'Big moment: ' + UI.pop.title.charAt(0) + UI.pop.title.slice(1).toLowerCase() + '. Roll for it.', btn: 'ROLL', act: () => UI.pop.click() };
+  if (G.intro && !gSim) return { text: 'The public-address announcer has tonight\'s starting lineups.', btn: 'ANNOUNCE THE LINEUPS', act: () => Actions.announce() };
   if (G.pregame > 0) {
     const stg = G.pregame;
     if (stg === 4) return { text: 'Both starters are warmed up.', btn: 'PLAY BALL', act: () => Actions.pregameClick() };
@@ -537,9 +539,9 @@ function showGameSummary() {
     ${noh.length ? `<div class="sumrow" style="color:#c00"><b>NO-HITTER!</b> ${esc(noh.join(', '))}</div>` : ''}${stks.length ? `<div class="sumrow"><b>Hitting streaks</b> ${esc(stks.join(', '))}</div>` : ''}
     ${pits.map(p => `<div class="sumrow small">${esc(p)}</div>`).join('')}
     <div class="small" style="margin-top:8px">${G.exhib ? 'Exhibition: nothing is saved.' : 'Saved to the standings, season stats, leaders and box score archive.'}</div></div>
-    <div class="dlg-btns"><button class="btn primary" id="sumNext" style="width:auto">NEXT GAME</button><button class="btn" id="sumBox">Scorebook</button><button class="btn" id="sumClose">Close</button></div></div>`;
+    <div class="dlg-btns"><button class="btn primary" id="sumNext" style="width:auto">NEXT GAME</button><button class="btn" id="sumPaper">Read the paper</button><button class="btn" id="sumBox">Scorebook</button><button class="btn" id="sumClose">Close</button></div></div>`;
   const close = () => { m.classList.add('hidden'); m.innerHTML = ''; };
-  $('sumNext').onclick = () => { close(); Actions.nextGame(); }; $('sumBox').onclick = () => { close(); Actions.showScreen('scorebook'); }; $('sumClose').onclick = close;
+  $('sumNext').onclick = () => { close(); Actions.nextGame(); }; $('sumPaper').onclick = () => { close(); paperPick = 'latest'; Actions.showScreen('paper'); }; $('sumBox').onclick = () => { close(); Actions.showScreen('scorebook'); }; $('sumClose').onclick = close;
 }
 function situationHtml() {
   const bs = G.bases; const on = [];
@@ -655,11 +657,12 @@ function standingsScreen() {
     h += `<table class="data"><tr><th class="l">${esc(d.title)}</th><th>W</th><th>L</th><th>Pct</th><th>GB</th><th>Real 1977</th></tr>${d.teams.map(t => `<tr><td class="l">${esc(t.name)}</td><td>${t.w}</td><td>${t.l}</td><td>${t.pct}</td><td>${t.gb}</td><td class="small">${t.real}</td></tr>`).join('')}</table>`;
   }
   h += `</div><div class="results"><h3>Results</h3><table class="data"><tr><th>#</th><th>Game</th><th>Score</th><th>W</th><th>L</th><th>S</th><th>Line</th></tr>${S.results.slice().reverse().slice(0, 200).map(r => `<tr><td>${r.game}</td><td>${esc(r.label)}</td><td>${r.away} ${r.ra}, ${r.home} ${r.rh}</td><td>${esc(r.wp)}</td><td>${esc(r.lp)}</td><td>${esc(r.sv)}</td><td class="mono small">${esc(r.line)}</td></tr>`).join('')}</table></div>`;
+  h += raceHtml();
   h += `<div class="btnrow"><button class="btn warn" onclick="Actions.restartSeason()">Restart season</button></div></div>`;
   root.innerHTML = h;
 }
 function leadersScreen() {
-  const root = $('screen'); let h = `<div class="pane"><h2>1977 leaders</h2><p class="small">AVG, OBP, SLG and OPS: 3.1 plate appearances per team game; ERA and WHIP: 1 inning per team game.</p>`;
+  const root = $('screen'); let h = `<div class="pane"><h2>1977 leaders</h2>` + awardsHtml() + `<p class="small">AVG, OBP, SLG and OPS: 3.1 plate appearances per team game; ERA and WHIP: 1 inning per team game.</p>`;
   for (const lg of leagueList()) {
     h += `<h3 class="lgh">${leagueName(lg)}</h3><div class="ldgrid">`;
     for (const [k, s] of LEADER_DEFS) { const t = leaderTable(k, s, lg); h += `<table class="data ld"><tr><th colspan="3" class="l">${esc(t.title)}</th></tr>${t.rows.map((r, i) => `<tr><td>${i + 1}</td><td class="l">${esc(r.name)}</td><td class="r">${r.v}</td></tr>`).join('') || '<tr><td colspan="3" class="small">no qualifiers yet</td></tr>'}</table>`; }
@@ -885,7 +888,7 @@ Actions.acctLoadStats = async () => { try { const [b, p, g] = await Promise.all(
 UI.syncState = () => { const el = $('sync'); if (!el) return; if (!Net.available) { el.textContent = ''; return; } el.textContent = Net.user ? (Net.lastErr ? '⚠ not synced' : '☁ ' + Net.user.name) : '○ not signed in'; el.title = Net.lastErr || (Net.user ? 'Saved to your account' : 'Click Account to sign in'); el.onclick = () => Actions.showScreen('account'); };
 
 // ======================= refresh =======================
-const SCREENS = { game: ['Game', gameScreen], scorebook: ['Scorebook', scorebookScreen], box: ['Box score', boxScreen], log: ['Log', logScreen], schedule: ['Schedule', scheduleScreen], standings: ['Standings', standingsScreen], leaders: ['Leaders & records', leadersScreen], season: ['Season stats', seasonScreen], lineups: ['Lineups', lineupsScreen], playoffs: ['Playoffs', playoffsScreen], options: ['Options', optionsScreen], help: ['Help', helpScreen], account: ['Account', accountScreen] };
+const SCREENS = { game: ['Game', gameScreen], paper: ['Gazette', paperScreen], scorebook: ['Scorebook', scorebookScreen], box: ['Box score', boxScreen], log: ['Log', logScreen], schedule: ['Schedule', scheduleScreen], standings: ['Standings & race', standingsScreen], leaders: ['Leaders & awards', leadersScreen], season: ['Season stats', seasonScreen], cards: ['Cards', cardsScreen], parks: ['Ballparks', parksScreen], lineups: ['Lineups', lineupsScreen], playoffs: ['Playoffs', playoffsScreen], options: ['Options', optionsScreen], help: ['Help', helpScreen], account: ['Account', accountScreen] };
 Actions.toggleSound = () => { Snd.toggle(); UI.refresh(); };
 Actions.toggleDark = () => { document.body.classList.toggle('dark'); try { localStorage.setItem('BF5_dark', document.body.classList.contains('dark') ? '1' : '0'); } catch (e) {} UI.refresh(); };
 Actions.toggleBig = () => { document.body.classList.toggle('big'); try { localStorage.setItem('BF5_bigtext', document.body.classList.contains('big') ? '1' : '0'); } catch (e) {} UI.refresh(); };

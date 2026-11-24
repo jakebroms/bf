@@ -75,6 +75,7 @@ function resetGame() {
     G.playTxt = "Click the pop-up to roll each starter's warm-up tosses, then Ready to play.";
   } else G.pregame = 0;
   G.rollLeads = true;
+  G.intro = (!gSim && opt('Lineup announcements') !== 'Off') ? 1 : 0;
 }
 async function restartGame() {
   if (G.over) { UI.toast('This game is final and already saved. Click Play next game.'); return; }
@@ -92,7 +93,7 @@ async function simNextGame() {
   if (G.over) { if (S.playoffs && S.playoffs.mode) { if (!await playNextPlayoff()) return; } else if (!loadTeams({ kind: 'schedule' })) return; }
   else if (!G.started && (!curPitcherID(0) || !curPitcherID(1))) { if (!loadTeams({ kind: 'schedule' })) return; }
   if (G.over) return;
-  G.pregame = 0; G.pend = null; gSim = true;
+  G.pregame = 0; G.pend = null; G.intro = 0; gSim = true;
   try {
     let k = 0;
     while (!G.over && k < 1500) { await nextAtBat(); G.pend = null; k++; }
@@ -126,7 +127,7 @@ function endGame() {
     if (r) { if (n === 1) { r.CG = 1; if ((side === 0 && sH === 0) || (side === 1 && sA === 0)) r.SHO = 1; } else if (cur !== G.startPit[side]) r.GF = 1; }
   }
   const line = G.innRuns[0].slice(0, G.inn).join('') + ' / ' + G.innRuns[1].slice(0, G.inn).join('');
-  const res = { game: G.gameNo, away: teamCode(0), ra: sA, home: teamCode(1), rh: sH, wp: fullName(wP), lp: fullName(lp), sv: sv ? fullName(sv) : '', line, label: '' };
+  const res = { game: G.gameNo, away: teamCode(0), ra: sA, home: teamCode(1), rh: sH, wp: fullName(wP), lp: fullName(lp), sv: sv ? fullName(sv) : '', line, label: '', date: gameDate(), park: parkName(), day: G.dayNo };
   if (G.playoffRow >= 0) playoffResult(teamCode(w));
   if (G.sched >= 0) {
     S.played[G.sched] = teamCode(0) + ' ' + sA + ', ' + teamCode(1) + ' ' + sH;
@@ -134,7 +135,7 @@ function endGame() {
   }
   if (!G.exhib) { for (let side = 0; side <= 1; side++) { const t = S.teams[teamCode(side)]; if (t) t.next++; } updateRest(); }
   addLog('Final: ' + teamCode(0) + ' ' + sA + ', ' + teamCode(1) + ' ' + sH + '.  W: ' + lastName(wP) + '  L: ' + lastName(lp) + (sv ? '  S: ' + lastName(sv) : ''));
-  if (G.playoffRow < 0 && !G.exhib) { saveToSeason(); updateRecords(); }
+  if (G.playoffRow < 0 && !G.exhib) { saveToSeason(); updateRecords(); raceLogAdd(); weeklyAdd(); }
   for (const x of G.boxPit) {
     if (x.id === wP) x.dec = 'W, ' + replayPit(x.id, 'W') + '-' + replayPit(x.id, 'L');
     else if (x.id === lp) x.dec = 'L, ' + replayPit(x.id, 'W') + '-' + replayPit(x.id, 'L');
@@ -144,6 +145,7 @@ function endGame() {
   S.results.push(res);
   res.label = '#' + S.results.length + ' · ' + ln + ' · ' + teamCode(0) + ' ' + sA + ' at ' + teamCode(1) + ' ' + sH;
   S.archive[G.gameNo] = snapGame(res.label);
+  try { const pp = makePaper(); pp.label = res.label; S.papers[G.gameNo] = pp; const pk = Object.keys(S.papers).map(Number).sort((a, b) => a - b); while (pk.length > 200) delete S.papers[pk.shift()]; } catch (e) { console.error('paper', e); }
   S.logAll[G.gameNo] = { label: res.label, log: G.log.slice() };
   trimSeason();
   G.playTxt = 'Final: ' + teamCode(0) + ' ' + sA + ', ' + teamCode(1) + ' ' + sH + '. Click NEXT GAME.'; sfx(G.walkoff ? 'walkoff' : 'final', 0.3, { home: w === 1 }); if (!G.walkoff && UI.flash && !gSim) UI.flash('FINAL', 'navy'); G.summary = { wp: fullName(wP), lp: fullName(lp), sv: sv ? fullName(sv) : '' };
