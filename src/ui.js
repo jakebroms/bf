@@ -599,7 +599,7 @@ function gameScreen() {
     ${VIEW.cards ? `<div class="col card-col">${cards[0]}</div>` : ''}
     <div class="col mid">
       <div class="nextbox"><div class="nexttext">${esc(st.text)}</div>${st.btn ? `<button class="btn primary ${st.kind || ''}" onclick="Actions.primary()">${esc(st.btn)}</button>` : ''}</div>
-      <div class="fieldwrap"><svg id="field" viewBox="0 -72 600 500" preserveAspectRatio="xMidYMid meet"></svg><div id="popHost" class="hidden"></div></div>
+      <div class="fieldwrap"><svg id="field" viewBox="0 0 600 428" preserveAspectRatio="xMidYMid meet"></svg><div id="popHost" class="hidden"></div></div>
       <div class="playrow">${diceHtml()}<div class="play"><div class="rolltxt">${esc(G.rollTxt)}</div><div class="playtxt">${esc(G.playTxt)}</div></div></div>
       <div class="extra">${esc(G.extra)}</div>
       <div class="ph2">MANAGER MOVES <small>· before you roll</small></div>
@@ -637,13 +637,13 @@ function gameScreen() {
 function sizeField() {
   // the field takes the room that is left on screen, so the dice and the manager moves stay in view
   const fw = document.querySelector('.fieldwrap'); if (!fw) return;
-  const w = fw.getBoundingClientRect().width || 600; const byWidth = w * VB_H / 600;
+  const w = fw.getBoundingClientRect().width || 600; const byWidth = w * vbH() / 600;
   const below = (document.querySelector('.playrow') ? 80 : 0) + (G.over || G.pregame ? 0 : 0) + 190;   // dice row, manager moves, game buttons
   const avail = Math.max(220, innerHeight - fw.getBoundingClientRect().top - below);
   const cap = VIEW.field === 'small' ? Math.min(avail, innerHeight * 0.34) : VIEW.field === 'large' ? avail : Math.min(avail, innerHeight * 0.5);
   const h = Math.max(200, Math.min(byWidth, cap));
   fw.style.height = h + 'px'; const svg = fw.querySelector('svg');
-  if (svg) { svg.style.height = h + 'px'; svg.style.width = '100%'; const extra = Math.max(0, Math.min(900, VB_H * w / h - 600)); gViewX = -Math.round(extra / 2); svg.setAttribute('viewBox', `${gViewX} ${VB_Y} ${Math.round(600 + extra)} ${VB_H}`); }
+  if (svg) { svg.style.height = h + 'px'; svg.style.width = '100%'; const extra = stadiumLook() ? Math.max(0, Math.min(900, vbH() * w / h - 600)) : 0; gViewX = -Math.round(extra / 2); svg.setAttribute('viewBox', `${gViewX} ${vbY()} ${Math.round(600 + extra)} ${vbH()}`); fw.classList.toggle('classic', !stadiumLook()); }
 }
 
 // ======================= other screens =======================

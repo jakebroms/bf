@@ -412,7 +412,7 @@ function parksScreen() {
   const away = S.results.filter(r => r.away === parkPick), aw = away.filter(r => r.ra > r.rh).length, al = away.length - aw;
   const runsHere = home.reduce((s, r) => s + r.ra + r.rh, 0), hrHere = ''; const R = S.records || {};
   root.innerHTML = `<div class="pane"><h2>Ballparks</h2><div class="btnrow">${parks.map(p => `<button class="mini${p.code === parkPick ? ' on' : ''}" onclick="parkPick='${p.code}';UI.refresh()">${p.code}</button>`).join('')}</div>
-    <div class="parkgrid"><div class="parkpic"><svg viewBox="0 -72 600 500">${svg}</svg></div>
+    <div class="parkgrid"><div class="parkpic"><svg viewBox="0 ${vbY()} 600 ${vbH()}">${svg}</svg></div>
     <div><h3 style="margin-top:0">${esc(park)}</h3><p>Home of the <b>${esc(teamFull(parkPick))}</b> · ${esc(teamCity(parkPick))} · ${isDome(park) ? 'indoors, no wind' : 'open air'}</p>
     <p><b>Dimensions:</b> left field ${dims[0]} ft · center ${dims[1]} ft · right ${dims[2]} ft${park.includes('Fenway') ? ' · the Green Monster in left' : ''}</p>
     <h4>How it plays (${seasonYr()} park effects, measured from home vs road games)</h4><table class="data"><tr><th class="l">Result</th><th>Factor</th><th class="l">In plain English</th></tr>${pf}</table>

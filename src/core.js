@@ -59,6 +59,7 @@ function friendlyCode(t) { return ({ NYA:'NYY', NYN:'NYM', LAN:'LAD', SLN:'STL',
 
 // ---- options ----
 const OPTION_DEFS = D.options.map(o => ({ name: o[0], def: String(o[1]), help: o[2] || '' }));
+OPTION_DEFS.push({ name: 'Ballpark look', def: 'Classic', help: 'Classic: the plain board-game field. Stadium: stands with a crowd sized to the gate, day and night lighting, rain and wind on the field, and each park\'s own look (turf, the Green Monster, the fountains).' });
 OPTION_DEFS.push({ name: 'Rainouts', def: 'On', help: 'On: a few outdoor games a season get rained out and are made up as part of a doubleheader the next time the clubs meet there. Off: every game is played as scheduled.' });
 OPTION_DEFS.push({ name: 'Lineup announcements', def: 'On', help: 'On: before each game the public-address announcer reads both starting lineups over the organ and the crowd (click to skip). Off: straight to the warm-up tosses.' });
 const OPTION_CHOICES = {
@@ -77,6 +78,7 @@ const OPTION_CHOICES = {
   'DH rule': ["Home team's league", 'Always', 'Never'],
   'Lineup announcements': ['On', 'Off'],
   'Rainouts': ['On', 'Off'],
+  'Ballpark look': ['Classic', 'Stadium'],
 };
 let O = {};
 function optDefaults() { const o = {}; OPTION_DEFS.forEach(d => o[d.name] = d.def); return o; }

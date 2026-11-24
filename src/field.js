@@ -1,7 +1,8 @@
 /* field.js: the ballpark drawn to scale from its fence distances (field units 600 x 420, home plate at y = HOMEY) */
 'use strict';
 const IN_SC = 1.45, HOMEY = 30;
-function pkScale() { const cf = fenceDist(8); let s = (350 - 130 * IN_SC) / (cf - 130); return s > 0.78 ? 0.78 : s; }
+const stadiumLook = () => opt('Ballpark look') === 'Stadium';
+function pkScale() { const cf = fenceDist(8); const top = stadiumLook() ? 350 : 388, mx = stadiumLook() ? 0.78 : 0.85; let s = (top - 130 * IN_SC) / (cf - 130); return s > mx ? mx : s; }
 function RU(ft) { return ft <= 130 ? ft * IN_SC : 130 * IN_SC + (ft - 130) * pkScale(); }
 function fenceAt(th) {
   th = clamp(th, 45, 135); const cf = fenceDist(8), ln = th < 90 ? fenceDist(9) : fenceDist(7);
@@ -87,7 +88,8 @@ function skyPhase() {
   return G.inn <= 2 && !G.over ? 'dusk' : 'night';
 }
 let gParkCache = { key: '', svg: null }, gViewX = 0;
-const VB_Y = -72, VB_H = 500;   // the picture starts above the park so the upper deck beyond centre field is in it
+// the picture: the plain field is 600 x 428; the stadium look starts above the park so the upper deck beyond centre field is in it
+const vbY = () => stadiumLook() ? -72 : 0, vbH = () => stadiumLook() ? 500 : 428;
 // the stands follow the shape of the field: a strip of foul ground along each line, the backstop behind the plate, the fence arc
 function boundaryPts(Wf) {
   const pts = []; const push = (x, y, nx, ny) => pts.push([x, y, nx, ny]);
@@ -101,6 +103,7 @@ function boundaryPts(Wf) {
 const offPoly = (pts, k) => pts.map(p => (p[0] + p[2] * k).toFixed(1) + ',' + FY(p[1] + p[3] * k).toFixed(1)).join(' ');
 const bandPoly = (pts, k1, k2) => offPoly(pts, k1) + ' ' + pts.slice().reverse().map(p => (p[0] + p[2] * k2).toFixed(1) + ',' + FY(p[1] + p[3] * k2).toFixed(1)).join(' ');
 function parkSVG() {
+  if (!stadiumLook()) return parkSVGClassic();
   // the park: stands, grass or turf, warning track, fence, dirt, lines, bases, dugouts, bullpens, the sky, the weather
   const park = gParkOverride || parkName(), look = parkLook(park), att = gParkOverride ? 0.6 : (G.att ? crowdSize() : G.dh === 2 ? 0.55 : 0.5);
   const phase = skyPhase(), w = gParkOverride ? null : G.weather;
@@ -212,7 +215,7 @@ function parkSVG() {
   if (!gParkOverride && (w || dome)) {
     const icon = dome ? '🏟' : w.dir === 'Rain' ? '🌧' : night ? '🌙' : dusk ? '🌆' : G.sky === 'cloudy' ? '☁' : '☀';
     const tip = (dome ? 'Indoors, 72°' : windText()) + (dome ? '' : G.night ? ' · night game' : G.dayNo ? ' · day game' : '') + (G.att ? ' · attendance ' + fmtNum(G.att) + (G.attNote ? ' (' + G.attNote + ')' : '') : '');
-    s += `<g class="wxbadge" transform="translate(${gViewX} ${VB_Y})"><title>${esc(tip)}</title><circle cx="16" cy="16" r="11" fill="#000" fill-opacity="0.45"/><text x="16" y="21" text-anchor="middle" font-size="13" font-family="Arial">${icon}</text>${w && !dome ? `<text x="31" y="20" font-size="9" font-weight="bold" fill="#fff" stroke="#000" stroke-width="0.5" paint-order="stroke" font-family="Arial">${w.temp}°</text>` : ''}</g>`;
+    s += `<g class="wxbadge" transform="translate(${gViewX} ${vbY()})"><title>${esc(tip)}</title><circle cx="16" cy="16" r="11" fill="#000" fill-opacity="0.45"/><text x="16" y="21" text-anchor="middle" font-size="13" font-family="Arial">${icon}</text>${w && !dome ? `<text x="31" y="20" font-size="9" font-weight="bold" fill="#fff" stroke="#000" stroke-width="0.5" paint-order="stroke" font-family="Arial">${w.temp}°</text>` : ''}</g>`;
   }
   s += `<text x="${gViewX + 8}" y="417" font-size="10" fill="#fff" font-family="Arial" font-weight="bold" stroke="#000" stroke-width="0.6" paint-order="stroke">${esc(park)}${G.att && !gParkOverride ? ' · ' + fmtNum(G.att) : ''}</text>`;
   // camera flashes in the seats after a big moment at night
@@ -223,6 +226,34 @@ function parkSVG() {
 }
 function shade(hex, f) { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex); if (!m) return hex; return '#' + [1, 2, 3].map(i => Math.round(clamp(parseInt(m[i], 16) * f, 0, 255)).toString(16).padStart(2, '0')).join(''); }
 let gSpark = 0;
+function parkSVGClassic() {
+  // static park: grass, fair territory, fence, dirt, infield, lines, bases, distances
+  const pts = []; for (let i = 0; i <= 36; i++) { const th = 45 + i * 2.5; const [x, y] = polarXY(fenceAt(th), th); pts.push(x.toFixed(1) + ',' + FY(y).toFixed(1)); }
+  const fair = '300,' + FY(HOMEY) + ' ' + pts.join(' ') + ' 300,' + FY(HOMEY);
+  const dirt = []; for (let i = 0; i <= 36; i++) { const th = 45 + i * 2.5; const [x, y] = polarXY(150, th); dirt.push(x.toFixed(1) + ',' + FY(y).toFixed(1)); }
+  const [b1x, b1y] = polarXY(90, 45); const [, b2y] = polarXY(127.3, 90); const d = 14 * IN_SC;
+  const ingrass = [[300, HOMEY + d], [b1x - d * 0.75, b1y], [300, b2y - d], [600 - b1x + d * 0.75, b1y]].map(p => p[0].toFixed(1) + ',' + FY(p[1]).toFixed(1)).join(' ');
+  const [rfx, rfy] = polarXY(fenceDist(9), 45), [lfx, lfy] = polarXY(fenceDist(7), 135);
+  const [, my] = polarXY(60.5, 90);
+  let s = '';
+  s += `<rect x="0" y="0" width="600" height="420" fill="#e4ebd8"/>`;
+  s += `<polygon points="${fair}" fill="#b6da96"/>`;
+  s += `<polyline points="${pts.join(' ')}" fill="none" stroke="#274e13" stroke-width="3"/>`;
+  s += `<polygon points="300,${FY(HOMEY - 8)} ${dirt.join(' ')} 300,${FY(HOMEY - 8)}" fill="#d6ba8c"/>`;
+  s += `<polygon points="${ingrass}" fill="#b6da96"/>`;
+  s += `<line x1="300" y1="${FY(HOMEY)}" x2="${rfx.toFixed(1)}" y2="${FY(rfy).toFixed(1)}" stroke="#fff" stroke-width="1.5"/>`;
+  s += `<line x1="300" y1="${FY(HOMEY)}" x2="${lfx.toFixed(1)}" y2="${FY(lfy).toFixed(1)}" stroke="#fff" stroke-width="1.5"/>`;
+  const bp = [[300, HOMEY], [b1x, b1y], [300, b2y], [600 - b1x, b1y], [300, HOMEY]];
+  for (let i = 0; i < 4; i++) s += `<line x1="${bp[i][0].toFixed(1)}" y1="${FY(bp[i][1]).toFixed(1)}" x2="${bp[i + 1][0].toFixed(1)}" y2="${FY(bp[i + 1][1]).toFixed(1)}" stroke="#8a6d3b" stroke-width="1.2"/>`;
+  s += `<ellipse cx="300" cy="${FY(my).toFixed(1)}" rx="7" ry="5" fill="#d6ba8c"/>`;
+  s += `<rect x="295" y="${FY(HOMEY) - 5}" width="10" height="10" fill="#fff" stroke="#5a5a5a" stroke-width="0.8"/>`;
+  const bases = [[b1x, b1y], [300, b2y], [600 - b1x, b1y]];
+  bases.forEach((b, i) => { s += `<rect id="base${i + 1}" x="${(b[0] - 6).toFixed(1)}" y="${(FY(b[1]) - 6).toFixed(1)}" width="12" height="12" transform="rotate(45 ${b[0].toFixed(1)} ${FY(b[1]).toFixed(1)})" fill="#fff" stroke="#555" stroke-width="0.8"/>`; });
+  [[129, 7], [90, 8], [51, 9]].forEach(([th, f]) => { const [x, y] = polarXY(fenceAt(th) - 17, th); s += `<text x="${x.toFixed(1)}" y="${(FY(y) + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="bold" fill="#274e13" font-family="Arial">${fenceDist(f)}</text>`; });
+  s += `<text x="8" y="414" font-size="10" fill="#274e13" font-family="Arial" font-weight="bold">${esc(gParkOverride || parkName())}</text>`;
+  return { svg: s, bases, b1x, b1y, b2y };
+}
+
 function fielderLabel(f, fid) {
   // [name line, ratings line]
   const k = fid + '|' + f; let r2 = '';
@@ -239,13 +270,13 @@ function renderField(container) {
     if (f === 2) { x = 300; y = 9; } else [x, y] = polarXY(fDistFt(f), fAng(f));
     const [l1, l2] = fielderLabel(f, id); const w = Math.max(70, l1.length * 8.2 + 12, l2.length * 4.6 + 8);
     const glow = pendX === f; const h = l2 ? 26 : 18;
-    s += `<g class="fld${glow ? ' glow' : ''}" data-f="${f}" style="cursor:${glow ? 'pointer' : 'default'}"><rect x="${(x - w / 2).toFixed(1)}" y="${(FY(y) - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="4" filter="url(#shadow)" fill="${glow ? '#ffc000' : '#fff'}" fill-opacity="0.95" stroke="${glow ? '#c55a11' : '#6e9a3a'}" stroke-width="${glow ? 2 : 1}"/><text x="${x.toFixed(1)}" y="${(FY(y) + (l2 ? -0.5 : 4.5)).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="#111">${esc(l1)}</text>${l2 ? `<text x="${x.toFixed(1)}" y="${(FY(y) + 9.5).toFixed(1)}" text-anchor="middle" font-size="7.5" font-family="Arial" fill="#444">${esc(l2)}</text>` : ''}</g>`;
+    s += `<g class="fld${glow ? ' glow' : ''}" data-f="${f}" style="cursor:${glow ? 'pointer' : 'default'}"><rect x="${(x - w / 2).toFixed(1)}" y="${(FY(y) - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="4" ${stadiumLook() ? 'filter="url(#shadow)"' : ''} fill="${glow ? '#ffc000' : '#fff'}" fill-opacity="0.95" stroke="${glow ? '#c55a11' : '#6e9a3a'}" stroke-width="${glow ? 2 : 1}"/><text x="${x.toFixed(1)}" y="${(FY(y) + (l2 ? -0.5 : 4.5)).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="#111">${esc(l1)}</text>${l2 ? `<text x="${x.toFixed(1)}" y="${(FY(y) + 9.5).toFixed(1)}" text-anchor="middle" font-size="7.5" font-family="Arial" fill="#444">${esc(l2)}</text>` : ''}</g>`;
   }
   pk.bases.forEach((b, i) => {
     const rid = G.bases[i]; if (!rid) return;
     const spd = runSpd(rid), cue = stealCue(i + 1); const lbl = lastName(rid); const w = Math.max(60, lbl.length * 8.4 + 14);
     const stroke = cue === 2 ? '#00b050' : cue === 1 ? '#ffc000' : '#595959';
-    s += `<g class="runner"><rect x="${(b[0] - w / 2).toFixed(1)}" y="${(FY(b[1]) - 10).toFixed(1)}" width="${w}" height="20" rx="4" filter="url(#shadow)" fill="${speedColor(spd)}" stroke="${stroke}" stroke-width="${cue ? 3 : 1}"/><text x="${b[0].toFixed(1)}" y="${(FY(b[1]) + 5).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="${spd >= 19 ? '#fff' : '#000'}">${esc(lbl)}</text></g>`;
+    s += `<g class="runner"><rect x="${(b[0] - w / 2).toFixed(1)}" y="${(FY(b[1]) - 10).toFixed(1)}" width="${w}" height="20" rx="4" ${stadiumLook() ? 'filter="url(#shadow)"' : ''} fill="${speedColor(spd)}" stroke="${stroke}" stroke-width="${cue ? 3 : 1}"/><text x="${b[0].toFixed(1)}" y="${(FY(b[1]) + 5).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="bold" font-family="Arial" fill="${spd >= 19 ? '#fff' : '#000'}">${esc(lbl)}</text></g>`;
   });
   if (G.ball) s += `<circle id="balldot" cx="${G.ball.x.toFixed(1)}" cy="${FY(G.ball.y).toFixed(1)}" r="5.5" fill="#fff" stroke="#6e6e6e" stroke-width="0.8"/>`;
   container.innerHTML = s;
