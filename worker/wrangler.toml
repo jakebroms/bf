@@ -1,0 +1,20 @@
+name = "ballfive"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+routes = [{ pattern = "bf.bromsey.work", custom_domain = true }]
+
+# the game page is bundled into the script (no separate asset upload needed)
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ballfive"
+database_id = "0dce0987-2abd-4466-83e7-d4f3f2961d48"
+migrations_dir = "migrations"
+
+[observability]
+enabled = true

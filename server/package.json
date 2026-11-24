@@ -1,0 +1,14 @@
+{
+  "name": "ballfive-server",
+  "version": "1.0.0",
+  "description": "Ball Five Baseball 1977: web app with accounts and a stats database",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.5.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.1"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+server/data/
+worker/.wrangler/
+server/public/index.html
+worker/public/index.html
+*.png
