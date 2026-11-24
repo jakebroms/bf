@@ -637,6 +637,7 @@ function gameScreen() {
   </div>
   ${VIEW.scout ? `<div class="gbottom"><div class="scout"><div class="ph">SCOUTING REPORT <button class="mini" onclick="scoutOpen=!scoutOpen;UI.refresh()">${scoutOpen ? 'Hide' : 'Show'}</button></div>${scoutOpen && bid ? scoutHtml(bid, pid, fside, form) : '<div class="small">Plain-English notes on the batter, the pitcher and the runners.</div>'}</div></div>` : ''}`;
   sizeField(); renderField($('field')); renderPop(); UI.lastScore = G.score.slice(); UI.crowdLevel();
+  if (!G.over && !G.pregame && !G.intro && G.started && !gSim && bid) { const key = G.gameNo + '|' + bid + '|' + G.pa.length; if (UI.lastBatter !== key) { UI.lastBatter = key; sfx('batter', 0.2, { home: side === 1, name: fullName(bid) }); } }
 }
 function sizeField() {
   // the field takes the room that is left on screen, so the dice and the manager moves stay in view
@@ -752,7 +753,7 @@ const OPTION_GROUPS = [
   ['The season', ['Games', 'Lineups', 'Injuries', 'Pitcher rest days', 'Tired pitcher cutoff', 'DH rule', 'Splits', 'Park effects', 'Weather', 'Rainouts']],
   ['How a play goes', ['Click to play results', 'Card lookup', 'Solo dice mode', 'Mode', 'Send/hold prompts', 'Pickoffs', 'Computer steals', 'Surprise steals', 'Momentum', 'Pitcher daily form', 'Warm-up tosses', 'At the wall']],
   ['Pop-ups', ['Pop-ups', 'Fielding check pop-ups', 'Runner pop-ups', 'Steal and pickoff pop-ups', 'Big lead pop-ups', 'Close plays at first', 'Manager arguments', 'The pivot', 'Plays at the plate', 'Error pop-ups']],
-  ['Looks and sound', ['Ballpark look', 'Lineup announcements', 'Bouton tribute']],
+  ['Looks and sound', ['Ballpark look', 'Lineup announcements', 'Announcer voice', 'Bouton tribute']],
 ];
 function optionsScreen() {
   const root = $('screen'); const placed = new Set();

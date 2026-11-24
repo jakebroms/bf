@@ -227,7 +227,7 @@ async function resolveEvent(ev, sB, roll, forceF) {
       const ft = hrDist(f, roll, b); if (!G.longHR || ft > G.longHR.ft) G.longHR = { ft, id: b, side: batSideTeam() };
       txt = lastName(b) + ' HOMERS to ' + FIELDNAME[f] + '! (' + ft + ' ft)';
       if (hadOn) { const rt = runnersText(); txt += ' ' + rt + (rt.includes(' and ') ? ' score.' : ' scores.'); }
-      sfx('homer', 0, { home: offHome() }); flash('HOME RUN!', 'gold'); gHRPlay = true; runnersScore(b); scoreRun(b, b); gHRPlay = false;
+      sfx('homer', 0, { home: offHome(), big: G.inn >= 7 || gJustOver }); flash('HOME RUN!', 'gold'); gHRPlay = true; runnersScore(b); scoreRun(b, b); gHRPlay = false;
       addLog(txt); UI.placeBall(f, 4, ft);
       break;
     }
@@ -329,6 +329,7 @@ async function resolveWall(roll) {
   const { f, fid } = wallSetup(roll); const rows = wallChart(f, fid);
   const rr = extraRoll('At the wall');
   const k = rows.find(r => rr >= r.lo && rr <= r.hi) || rows[rows.length - 1];
+  if (k.kind === 'D' || k.kind === 'T' || k.kind === 'G') sfx('wall', 0, { home: offHome() });
   popReveal('AT THE WALL', lastName(gBatID) + ' drives it to ' + FIELDNAME[f] + ' · ' + lastName(fid) + ' (range ' + rangeR(fid, f) + ') goes back', rows, rr);
   gLogPrefix = 'At the wall: ' + k.label.charAt(0).toLowerCase() + k.label.slice(1) + '! ';
   switch (k.kind) {
@@ -403,7 +404,7 @@ async function resolveOut(ev, roll, d, forceF) {
     }
   }
   addBat(b, 'AB', 1);
-  UI.placeBall(f, 0); sfx('out', 0, { home: defHome() });
+  UI.placeBall(f, 0); sfx(ev === EV.GB ? 'groundout' : (ev === EV.FB && f >= 7) ? 'flyout' : 'out', 0, { home: defHome() });
   if (ev === EV.GB) {
     const fidTxt = f === 1 ? 'the pitcher' : lastName(fid) + ' (' + posName(f) + ')';
     switch (z) {
