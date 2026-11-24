@@ -4,31 +4,24 @@ const UI = {};
 const Actions = {};
 let busy = false, G_UNDO = null, curScreen = 'game', luView = 0, swapPick = null, cardBackSide = -1;
 let boxPick = 'current', logPick = 'current', seasonTeam = '', schedTeam = '', edTeam = '', scoutOpen = true;
-const VIEW_PRESETS = {
-  everything: { cards: true, lineups: true, pbp: true, scout: true, settings: true, field: 'medium' },
-  simple: { cards: false, lineups: true, pbp: true, scout: false, settings: false, field: 'large' },
-  scorekeeper: { cards: false, lineups: true, pbp: true, scout: false, settings: true, field: 'small' },
-  boardgame: { cards: true, cardsIn: true, lineups: false, pbp: false, scout: false, settings: false, field: 'large' },
-};
-let VIEW = Object.assign({}, VIEW_PRESETS.everything);
-try { const v = JSON.parse(localStorage.getItem('BF5_view') || 'null'); if (v) VIEW = Object.assign({}, VIEW_PRESETS.everything, v); } catch (e) {}
-function saveView() { try { localStorage.setItem('BF5_view', JSON.stringify(VIEW)); } catch (e) {} }
-Actions.setView = (k, v) => { VIEW[k] = v; saveView(); UI.refresh(); };
-Actions.viewPreset = p => { VIEW = Object.assign({}, VIEW_PRESETS[p]); saveView(); UI.refresh(); };
-let defOpen = false;
-Actions.viewMenu = () => { VIEW.bar = !VIEW.bar; saveView(); UI.refresh(); };
-Actions.toggleDef = () => { defOpen = !defOpen; UI.refresh(); };
-// a slim strip under the header: presets, what is on the screen, the field size, and the defense pop-over
-function viewBarHtml() {
-  if (VIEW.bar === false) return '';
-  const chip = (k, label, title) => `<button class="vchip${VIEW[k] ? ' on' : ''}" onclick="Actions.setView('${k}',${!VIEW[k]})" title="${esc(title)}">${label}</button>`;
-  const pre = (p, label) => { const cur = Object.keys(VIEW_PRESETS[p]).every(k => VIEW[k] === VIEW_PRESETS[p][k]); return `<button class="vchip pre${cur ? ' on' : ''}" onclick="Actions.viewPreset('${p}')">${label}</button>`; };
-  return `<div class="viewbar"><span class="vlab">VIEW</span>${pre('boardgame', 'Board game')}${pre('simple', 'Simple')}${pre('everything', 'Everything')}${pre('scorekeeper', 'Scorekeeper')}<span class="vsep"></span>
-    ${chip('cards', 'Cards', 'the batter and pitcher cards')}${VIEW.cards ? chip('cardsIn', 'on the field', 'cards inside the field box') : ''}${chip('lineups', 'Lineups', 'both batting orders')}${chip('pbp', 'Play-by-play', 'the last plays')}${chip('scout', 'Scouting', 'notes on the batter, pitcher and runners')}${chip('settings', 'Settings panel', 'defense and settings as a panel')}<span class="vsep"></span>
-    <span class="vlab">FIELD</span>${['small', 'medium', 'large'].map(f => `<button class="vchip${VIEW.field === f ? ' on' : ''}" onclick="Actions.setView('field','${f}')">${f[0].toUpperCase() + f.slice(1)}</button>`).join('')}<span class="vsep"></span>
-    <button class="vchip def${defOpen ? ' on' : ''}${(G.infield && G.infield !== 'No') || (G.ofDepth && G.ofDepth !== 'Normal') || G.pitchAround ? ' set' : ''}" onclick="Actions.toggleDef()" title="Infield, outfield, pitch around, injuries">⚙ Defense ${defOpen ? '▴' : '▾'}</button>
-    <button class="vchip x" onclick="Actions.viewMenu()" title="Hide this strip (the View button brings it back)">✕</button>
-    ${defOpen ? `<div class="defpop">${settingsPanelHtml()}</div>` : ''}</div>`;
+// one view: the board game. Cards on the field, a big field, and everything else in drawers on the right.
+const VIEW = { cards: true, cardsIn: true, field: 'large', lineups: false, pbp: false, scout: false, settings: false };
+let dock = ''; try { dock = localStorage.getItem('BF5_dock') || ''; } catch (e) {}
+let stratOpen = false;
+Actions.dock = k => { dock = dock === k ? '' : k; try { localStorage.setItem('BF5_dock', dock); } catch (e) {} UI.refresh(); };
+Actions.strat = () => { stratOpen = !stratOpen; UI.refresh(); };
+const DOCK_ITEMS = [['lineups', '📋', 'Lineups'], ['pbp', '📰', 'Play-by-play'], ['scout', '🔍', 'Scouting'], ['defense', '🛡', 'Defense']];
+function dockHtml(bid, pid, fside, form) {
+  const defSet = (G.infield && G.infield !== 'No') || (G.ofDepth && G.ofDepth !== 'Normal') || G.pitchAround;
+  const icons = `<div class="dock${dock ? ' shifted' : ''}">${DOCK_ITEMS.map(([k, ic, label]) => `<button class="dockbtn${dock === k ? ' on' : ''}${k === 'defense' && defSet ? ' set' : ''}" onclick="Actions.dock('${k}')" title="${label}"><span class="di">${ic}</span><span class="dl">${label}</span></button>`).join('')}</div>`;
+  if (!dock) return icons;
+  let body = '';
+  if (dock === 'lineups') body = `<div class="lucol">${lineupHtml(0)}${staminaHtml(0)}</div><div class="lucol">${lineupHtml(1)}${staminaHtml(1)}</div><div class="small dim" style="margin-top:6px">Change any player or position with the dropdowns (pinch hitters, defensive moves). Click <b>Staff</b> to change pitchers. Before the first pitch, click two slot numbers to swap them.</div>`;
+  else if (dock === 'pbp') body = `<div class="panel pbp">${G.log.slice(-40).reverse().map(l => `<div class="${l.txt.startsWith('---') ? 'inn' : ''}">${esc(l.txt)}</div>`).join('') || '<div class="small dim">Nothing yet.</div>'}</div>`;
+  else if (dock === 'scout') body = `<div class="scout">${bid ? scoutHtml(bid, pid, fside, form) : '<div class="small">Plain-English notes on the batter, the pitcher and the runners.</div>'}</div>`;
+  else if (dock === 'defense') body = `<div class="panel">${settingsPanelHtml()}</div>`;
+  const label = (DOCK_ITEMS.find(x => x[0] === dock) || [])[2] || '';
+  return icons + `<div class="drawer"><div class="drawer-h"><span>${esc(label).toUpperCase()}</span><button class="mini" onclick="Actions.dock('${dock}')" title="Tuck it back to the right">Minimize ▸</button></div><div class="drawer-b">${body}</div></div>`;
 }
 function settingsPanelHtml() {
   return `<div class="ph">DEFENSE AND SETTINGS</div>
@@ -597,44 +590,29 @@ function gameScreen() {
   const stealCap = stealBase ? lastName(bs[stealBase - 1]) + ' steals ' + ['2nd', '3rd', 'home'][stealBase - 1] + ': safe 1-' + stealSafe(stealBase) : 'nobody on base';
   const buntCap = ((!bs[0] && !bs[1]) || G.outs >= 2) ? 'bunt for a hit (grade ' + buntGrade(bid || 'zzBAT') + ')' : 'sacrifice (grade ' + buntGrade(bid || 'zzBAT') + ')';
   const pkManual = opt('Pickoffs') === 'Manual';
-  const wide = innerWidth >= 1500 && innerHeight >= 700, xwide = innerWidth >= 2000;
-  const cardsIn = VIEW.cards && VIEW.cardsIn;
-  const cols = []; if (VIEW.cards && !cardsIn) cols.push('236px'); cols.push('minmax(480px, 1fr)'); if (VIEW.cards && !cardsIn) cols.push('236px');
-  const luCol = VIEW.lineups && wide; if (luCol) cols.push('minmax(400px, 470px)');
-  const sideCol = (VIEW.settings || VIEW.pbp) && xwide; if (sideCol) cols.push('minmax(380px, 460px)');
+  const strategies = [
+    actBtn('Steal', stealCap, 'Actions.steal()', canAct && stealBase, 'Send the lead runner'),
+    actBtn('Bunt', buntCap, 'Actions.bunt()', canAct, 'Lay one down'),
+    actBtn('Hit and run', anyOn() ? 'runners go with the pitch' : 'needs a runner on', 'Actions.hitAndRun()', canAct && anyOn(), 'The runners break on the pitch; the batter swings'),
+    actBtn('Intentional walk', 'put ' + lastName(bid || 'zzBAT') + ' on first', 'Actions.ibb()', canAct, 'Walk this batter on purpose'),
+    actBtn('Pitchout', bs[0] || bs[1] ? 'catch a runner going' : 'needs a runner on', 'Actions.pitchout()', canAct && (bs[0] || bs[1]), 'Pitch out on the next pitch'),
+    actBtn('Pickoff throw', pkManual ? 'throw over to the runner' : 'automatic (see Options)', 'Actions.pickoff()', canAct && pkManual && ppBase(), 'Throw over to the runner (Manual pickoffs only)'),
+  ];
   root.innerHTML = `
   <div class="sticky"><div class="gtop"><div class="gleft"><div class="gtitle">${esc(G.title)}</div>${situationHtml()}</div><div class="gright">${diamondHtml()}${scoreboardHtml()}</div></div></div>
-  ${viewBarHtml()}
-  <div class="gmain" style="grid-template-columns:${cols.join(' ')}">
-    ${VIEW.cards && !cardsIn ? `<div class="col card-col">${cards[0]}</div>` : ''}
+  <div class="gmain board">
     <div class="col mid">
       <div class="nextbox"><div class="nexttext">${esc(st.text)}</div>${st.btn ? `<button class="btn primary ${st.kind || ''}" onclick="Actions.primary()">${esc(st.btn)}</button>` : ''}</div>
-      <div class="fieldwrap${cardsIn ? ' withcards' : ''}"><svg id="field" viewBox="0 0 600 428" preserveAspectRatio="xMidYMid meet"></svg>${cardsIn ? `<div class="fcard left">${cards[0]}</div><div class="fcard right">${cards[1]}</div>` : ''}<div id="popHost" class="hidden"></div></div>
-      <div class="playrow">${diceHtml()}<div class="play ${playKind(G.rollTxt + ' ' + G.playTxt)}"><div class="rolltxt">${esc(G.rollTxt)}</div><div class="playtxt">${esc(G.playTxt)}</div>${recentPlays()}</div></div>
+      <div class="fieldwrap withcards"><svg id="field" viewBox="0 0 600 428" preserveAspectRatio="xMidYMid meet"></svg><div class="fcard left">${cards[0]}</div><div class="fcard right">${cards[1]}</div>
+        <div class="fdice">${diceHtml()}</div>
+        <div class="fstrat${stratOpen ? ' open' : ''}"><div class="stratmenu"><div class="ph">MANAGER STRATEGIES <small>· before you roll</small></div>${strategies.join('')}</div><button class="stratbtn${canAct ? '' : ' off'}" onclick="Actions.strat()">MANAGER STRATEGIES ${stratOpen ? '▾' : '▴'}</button></div>
+        <div id="popHost" class="hidden"></div></div>
+      <div class="playrow"><div class="play ${playKind(G.rollTxt + ' ' + G.playTxt)}"><div class="rolltxt">${esc(G.rollTxt)}</div><div class="playtxt">${esc(G.playTxt)}</div>${recentPlays()}</div>
+        <div class="gamebtns"><button class="btn" onclick="Actions.undo()" title="Take back the last play">Undo last play</button><button class="btn" onclick="Actions.restartGame()" title="Start this game over">Restart game</button><button class="btn ${G.over ? 'go' : ''}" onclick="Actions.nextGame()" title="Load the next game on the schedule">Next game</button><button class="btn" onclick="Actions.simGame()" title="The computer plays the rest of this game">Sim the rest</button><button class="btn" onclick="Actions.exhibitionOpen()" title="Pick any two teams">Exhibition</button></div></div>
       <div class="extra">${esc(G.extra)}</div>
-      <div class="ph2">MANAGER MOVES <small>· before you roll</small></div>
-      <div class="btnrow acts">
-        ${actBtn('Steal', stealCap, 'Actions.steal()', canAct && stealBase, 'Send the lead runner')}
-        ${actBtn('Bunt', buntCap, 'Actions.bunt()', canAct, 'Lay one down')}
-        ${actBtn('Hit and run', anyOn() ? 'runners go with the pitch' : 'needs a runner on', 'Actions.hitAndRun()', canAct && anyOn(), 'The runners break on the pitch; the batter swings')}
-        ${actBtn('Intentional walk', 'put ' + lastName(bid || 'zzBAT') + ' on first', 'Actions.ibb()', canAct, 'Walk this batter on purpose')}
-        ${actBtn('Pitchout', bs[0] || bs[1] ? 'catch a runner going' : 'needs a runner on', 'Actions.pitchout()', canAct && (bs[0] || bs[1]), 'Pitch out on the next pitch')}
-        ${actBtn('Pickoff throw', pkManual ? 'throw over to the runner' : 'automatic (see Options)', 'Actions.pickoff()', canAct && pkManual && ppBase(), 'Throw over to the runner (Manual pickoffs only)')}
-      </div>
-      <div class="ph2">GAME <small>· undo, restart, next</small></div>
-      <div class="btnrow acts2">
-        <button class="btn" onclick="Actions.undo()" title="Take back the last play">Undo last play</button><button class="btn" onclick="Actions.restartGame()" title="Start this game over">Restart game</button>
-        <button class="btn ${G.over ? 'go' : ''}" onclick="Actions.nextGame()" title="Load the next game on the schedule">Next game</button><button class="btn" onclick="Actions.simGame()" title="The computer plays the rest of this game">Sim the rest</button><button class="btn" onclick="Actions.exhibitionOpen()" title="Pick any two teams">Exhibition</button>
-      </div>
     </div>
-    ${VIEW.cards && !cardsIn ? `<div class="col card-col">${cards[1]}</div>` : ''}
-    ${VIEW.lineups ? `<div class="lucols" style="${luCol ? 'grid-column:auto;grid-template-columns:1fr;gap:6px' : ''}"><div class="lucol">${lineupHtml(0)}${staminaHtml(0)}</div><div class="lucol">${lineupHtml(1)}${staminaHtml(1)}</div></div>` : ''}
-    ${VIEW.settings || VIEW.pbp ? `<div class="side" style="${sideCol ? 'grid-column:auto;grid-template-columns:1fr;gap:8px;align-content:start' : VIEW.settings && VIEW.pbp ? '' : 'grid-template-columns:1fr'}">` : ''}
-      ${VIEW.settings ? `<div class="panel">${settingsPanelHtml()}<div class="small">Lineup tips: change any player or position with the dropdowns (pinch hitters, defensive moves). Click <b>Staff</b> to change pitchers. Before the first pitch, click two slot numbers to swap them.</div></div>` : ''}
-      ${VIEW.pbp ? `<div class="panel pbp"><div class="ph">PLAY-BY-PLAY</div>${G.log.slice(-16).reverse().map(l => `<div class="${l.txt.startsWith('---') ? 'inn' : ''}">${esc(l.txt)}</div>`).join('')}</div>` : ''}
-    ${VIEW.settings || VIEW.pbp ? '</div>' : ''}
   </div>
-  ${VIEW.scout ? `<div class="gbottom"><div class="scout"><div class="ph">SCOUTING REPORT <button class="mini" onclick="scoutOpen=!scoutOpen;UI.refresh()">${scoutOpen ? 'Hide' : 'Show'}</button></div>${scoutOpen && bid ? scoutHtml(bid, pid, fside, form) : '<div class="small">Plain-English notes on the batter, the pitcher and the runners.</div>'}</div></div>` : ''}`;
+  ${dockHtml(bid, pid, fside, form)}`;
   sizeField(); renderField($('field')); renderPop(); UI.lastScore = G.score.slice(); UI.crowdLevel();
   if (!G.over && !G.pregame && !G.intro && G.started && !gSim && bid) { const key = G.gameNo + '|' + bid + '|' + G.pa.length; if (UI.lastBatter !== key) { UI.lastBatter = key; sfx('batter', 0.2, { home: side === 1, name: fullName(bid) }); } }
 }
@@ -642,12 +620,12 @@ function sizeField() {
   // the field takes the room that is left on screen, so the dice and the manager moves stay in view
   const fw = document.querySelector('.fieldwrap'); if (!fw) return;
   const w = fw.getBoundingClientRect().width || 600; const byWidth = w * vbH() / 600;
-  const below = VIEW.cards && VIEW.cardsIn ? 230 : (document.querySelector('.playrow') ? 80 : 0) + 190;   // dice row (and, unless the cards are on the field, the manager moves and game buttons)
-  const avail = Math.max(220, innerHeight - fw.getBoundingClientRect().top - below);
-  const cap = VIEW.field === 'small' ? Math.min(avail, innerHeight * 0.34) : VIEW.field === 'large' ? avail : Math.min(avail, innerHeight * 0.5);
+  const below = 160;   // the play line and the game buttons stay in view under the field
+  const avail = Math.max(260, innerHeight - fw.getBoundingClientRect().top - below);
+  const cap = avail;
   const h = Math.max(200, Math.min(byWidth, cap));
   fw.style.height = h + 'px'; const svg = fw.querySelector('svg');
-  if (svg) { svg.style.height = h + 'px'; svg.style.width = '100%'; const extra = stadiumLook() ? Math.max(0, Math.min(900, vbH() * w / h - 600)) : 0; gViewX = -Math.round(extra / 2); svg.setAttribute('viewBox', `${gViewX} ${vbY()} ${Math.round(600 + extra)} ${vbH()}`); fw.classList.toggle('classic', !stadiumLook()); if (fw.classList.contains('withcards')) { const side = (w - h * 600 / vbH()) / 2; fw.style.setProperty('--cs', String(clamp(side / 250, 0.8, 1.45).toFixed(2))); } }
+  if (svg) { svg.style.height = h + 'px'; svg.style.width = '100%'; const extra = stadiumLook() ? Math.max(0, Math.min(900, vbH() * w / h - 600)) : 0; gViewX = -Math.round(extra / 2); svg.setAttribute('viewBox', `${gViewX} ${vbY()} ${Math.round(600 + extra)} ${vbH()}`); fw.classList.toggle('classic', !stadiumLook()); if (fw.classList.contains('withcards')) { const side = (w - h * 600 / vbH()) / 2; fw.style.setProperty('--cs', String(clamp(Math.min(side / 260, (h - 150) / 450), 0.8, 1.45).toFixed(2))); } }
 }
 
 // ======================= other screens =======================
@@ -873,7 +851,7 @@ UI.refresh = () => {
     const title = g[0], keys = g.slice(1), here = keys.includes(curScreen);
     return `<div class="navg${here ? ' here' : ''}"><button class="tab${here ? ' on' : ''}" onclick="Actions.navOpen(this.parentNode)">${title}${here ? ' · ' + SCREENS[curScreen][0] : ''} <span class="caret">▾</span></button><div class="navdd">${keys.map(k => `<button class="navitem${curScreen === k ? ' on' : ''}" onclick="Actions.showScreen('${k}')">${SCREENS[k][0]}</button>`).join('')}</div></div>`;
   }).join('');
-  const tools = $('tools'); if (tools) tools.innerHTML = `<span id="sync" class="sync"></span><button class="tool" onclick="Actions.viewMenu()" title="Choose what is on the game screen">☰ View</button><button class="tool" onclick="Actions.toggleSound()" title="Sound effects on or off">${Snd.on ? '🔊 Sound on' : '🔇 Sound off'}</button><input type="range" class="vol" min="0" max="100" value="${Math.round(Snd.vol * 100)}" title="Volume" oninput="Snd.setVol(this.value/100)" onchange="sfx('hit',0,{home:true})"><button class="tool" onclick="Actions.toggleDark()" title="Dark or light screen">${document.body.classList.contains('dark') ? '☀ Light mode' : '🌙 Dark mode'}</button><button class="tool" onclick="Actions.toggleBig()" title="Bigger text">${document.body.classList.contains('big') ? 'A Normal text' : 'A+ Bigger text'}</button>`;
+  const tools = $('tools'); if (tools) tools.innerHTML = `<span id="sync" class="sync"></span><button class="tool" onclick="Actions.toggleSound()" title="Sound effects on or off">${Snd.on ? '🔊 Sound on' : '🔇 Sound off'}</button><input type="range" class="vol" min="0" max="100" value="${Math.round(Snd.vol * 100)}" title="Volume" oninput="Snd.setVol(this.value/100)" onchange="sfx('hit',0,{home:true})"><button class="tool" onclick="Actions.toggleDark()" title="Dark or light screen">${document.body.classList.contains('dark') ? '☀ Light mode' : '🌙 Dark mode'}</button><button class="tool" onclick="Actions.toggleBig()" title="Bigger text">${document.body.classList.contains('big') ? 'A Normal text' : 'A+ Bigger text'}</button>`;
   UI.syncState();
   try { SCREENS[curScreen][1](); document.documentElement.style.setProperty('--topH', $('top').offsetHeight + 'px'); } catch (e) { console.error(e); $('screen').innerHTML = '<div class="pane"><p>Something went wrong drawing this screen: ' + esc(e.message) + '</p></div>'; }
 };
