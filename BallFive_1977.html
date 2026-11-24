@@ -3984,7 +3984,7 @@ function sizeField() {
   // the field takes the room that is left on screen, so the dice and the manager moves stay in view
   const fw = document.querySelector('.fieldwrap'); if (!fw) return;
   const w = fw.getBoundingClientRect().width || 600; const byWidth = w * vbH() / 600;
-  const below = VIEW.cards && VIEW.cardsIn ? 200 : (document.querySelector('.playrow') ? 80 : 0) + 190;   // dice row (and, unless the cards are on the field, the manager moves and game buttons)
+  const below = VIEW.cards && VIEW.cardsIn ? 230 : (document.querySelector('.playrow') ? 80 : 0) + 190;   // dice row (and, unless the cards are on the field, the manager moves and game buttons)
   const avail = Math.max(220, innerHeight - fw.getBoundingClientRect().top - below);
   const cap = VIEW.field === 'small' ? Math.min(avail, innerHeight * 0.34) : VIEW.field === 'large' ? avail : Math.min(avail, innerHeight * 0.5);
   const h = Math.max(200, Math.min(byWidth, cap));
