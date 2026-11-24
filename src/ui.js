@@ -10,18 +10,19 @@ let dock = ''; try { dock = localStorage.getItem('BF5_dock') || ''; } catch (e) 
 let stratOpen = false;
 Actions.dock = k => { dock = dock === k ? '' : k; try { localStorage.setItem('BF5_dock', dock); } catch (e) {} UI.refresh(); };
 Actions.strat = () => { stratOpen = !stratOpen; UI.refresh(); };
-const DOCK_ITEMS = [['lineups', '📋', 'Lineups'], ['pbp', '📰', 'Play-by-play'], ['scout', '🔍', 'Scouting'], ['defense', '🛡', 'Defense']];
-function dockHtml(bid, pid, fside, form) {
+const DOCK_ITEMS = [['strat', '🧢', 'Strategies'], ['lineups', '📋', 'Lineups'], ['pbp', '📰', 'Play-by-play'], ['scout', '🔍', 'Scouting'], ['defense', '🛡', 'Defense']];
+function dockHtml(bid, pid, fside, form, strategies) {
   const defSet = (G.infield && G.infield !== 'No') || (G.ofDepth && G.ofDepth !== 'Normal') || G.pitchAround;
   const icons = `<div class="dock${dock ? ' shifted' : ''}">${DOCK_ITEMS.map(([k, ic, label]) => `<button class="dockbtn${dock === k ? ' on' : ''}${k === 'defense' && defSet ? ' set' : ''}" onclick="Actions.dock('${k}')" title="${label}"><span class="di">${ic}</span><span class="dl">${label}</span></button>`).join('')}</div>`;
   if (!dock) return icons;
   let body = '';
-  if (dock === 'lineups') body = `<div class="lucol">${lineupHtml(0)}${staminaHtml(0)}</div><div class="lucol">${lineupHtml(1)}${staminaHtml(1)}</div><div class="small dim" style="margin-top:6px">Change any player or position with the dropdowns (pinch hitters, defensive moves). Click <b>Staff</b> to change pitchers. Before the first pitch, click two slot numbers to swap them.</div>`;
+  if (dock === 'strat') body = `<div class="stratlist"><div class="small dim" style="margin-bottom:8px">Manager strategies, before you roll.</div>${strategies.join('')}</div>`;
+  else if (dock === 'lineups') body = `<div class="lucol">${lineupHtml(0)}${staminaHtml(0)}</div><div class="lucol">${lineupHtml(1)}${staminaHtml(1)}</div><div class="small dim" style="margin-top:6px">Change any player or position with the dropdowns (pinch hitters, defensive moves). Click <b>Staff</b> to change pitchers. Before the first pitch, click two slot numbers to swap them.</div>`;
   else if (dock === 'pbp') body = `<div class="panel pbp">${G.log.slice(-40).reverse().map(l => `<div class="${l.txt.startsWith('---') ? 'inn' : ''}">${esc(l.txt)}</div>`).join('') || '<div class="small dim">Nothing yet.</div>'}</div>`;
   else if (dock === 'scout') body = `<div class="scout">${bid ? scoutHtml(bid, pid, fside, form) : '<div class="small">Plain-English notes on the batter, the pitcher and the runners.</div>'}</div>`;
   else if (dock === 'defense') body = `<div class="panel">${settingsPanelHtml()}</div>`;
-  const label = (DOCK_ITEMS.find(x => x[0] === dock) || [])[2] || '';
-  return icons + `<div class="drawer"><div class="drawer-h"><span>${esc(label).toUpperCase()}</span><button class="mini" onclick="Actions.dock('${dock}')" title="Tuck it back to the right">Minimize ▸</button></div><div class="drawer-b">${body}</div></div>`;
+  const label = dock === 'strat' ? 'Manager Strategies' : (DOCK_ITEMS.find(x => x[0] === dock) || [])[2] || '';
+  return icons + `<div class="drawer"><div class="drawer-h" onclick="Actions.dock('${dock}')" title="Tuck it back to the right"><span>${esc(label).toUpperCase()}</span><button class="drawer-x" title="Tuck it back to the right">➜</button></div><div class="drawer-b">${body}</div></div>`;
 }
 function settingsPanelHtml() {
   return `<div class="ph">DEFENSE AND SETTINGS</div>
@@ -605,14 +606,13 @@ function gameScreen() {
       <div class="nextbox"><div class="nexttext">${esc(st.text)}</div>${st.btn ? `<button class="btn primary ${st.kind || ''}" onclick="Actions.primary()">${esc(st.btn)}</button>` : ''}</div>
       <div class="fieldwrap withcards"><svg id="field" viewBox="0 0 600 428" preserveAspectRatio="xMidYMid meet"></svg><div class="fcard left">${cards[0]}</div><div class="fcard right">${cards[1]}</div>
         <div class="fdice">${diceHtml()}</div>
-        <div class="fstrat${stratOpen ? ' open' : ''}"><div class="stratmenu"><div class="ph">MANAGER STRATEGIES <small>· before you roll</small></div>${strategies.join('')}</div><button class="stratbtn${canAct ? '' : ' off'}" onclick="Actions.strat()">MANAGER STRATEGIES ${stratOpen ? '▾' : '▴'}</button></div>
         <div id="popHost" class="hidden"></div></div>
       <div class="playrow"><div class="play ${playKind(G.rollTxt + ' ' + G.playTxt)}"><div class="rolltxt">${esc(G.rollTxt)}</div><div class="playtxt">${esc(G.playTxt)}</div>${recentPlays()}</div>
         <div class="gamebtns"><button class="btn" onclick="Actions.undo()" title="Take back the last play">Undo last play</button><button class="btn" onclick="Actions.restartGame()" title="Start this game over">Restart game</button><button class="btn ${G.over ? 'go' : ''}" onclick="Actions.nextGame()" title="Load the next game on the schedule">Next game</button><button class="btn" onclick="Actions.simGame()" title="The computer plays the rest of this game">Sim the rest</button><button class="btn" onclick="Actions.exhibitionOpen()" title="Pick any two teams">Exhibition</button></div></div>
       <div class="extra">${esc(G.extra)}</div>
     </div>
   </div>
-  ${dockHtml(bid, pid, fside, form)}`;
+  ${dockHtml(bid, pid, fside, form, strategies)}`;
   sizeField(); renderField($('field')); renderPop(); UI.lastScore = G.score.slice(); UI.crowdLevel();
   if (!G.over && !G.pregame && !G.intro && G.started && !gSim && bid) { const key = G.gameNo + '|' + bid + '|' + G.pa.length; if (UI.lastBatter !== key) { UI.lastBatter = key; sfx('batter', 0.2, { home: side === 1, name: fullName(bid) }); } }
 }
