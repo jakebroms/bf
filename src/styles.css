@@ -491,7 +491,8 @@ table.sb td.tot { background: #1b3157; color: #ffd966; font-size: calc(15px * va
 .sbstate { color: var(--navy); font-weight: bold; } body.dark .sbstate { color: #ffd966; }
 .situation { gap: 14px; }
 .sitleft { display: flex; align-items: center; gap: 14px; }
-.dia { width: calc(64px * var(--fs)); height: calc(44px * var(--fs)); flex: 0 0 auto; }
+.situation { min-height: calc(84px * var(--fs)); }
+.dia { width: calc(64px * var(--fs)); height: calc(50px * var(--fs)); flex: 0 0 auto; overflow: visible; }
 .sitscore { display: flex; align-items: center; gap: 8px; font-family: Rockwell, Georgia, serif; font-size: calc(30px * var(--fs)); line-height: 1; }
 .sitscore b { font-weight: normal; opacity: .75; min-width: 1.1em; text-align: center; } .sitscore b.up { opacity: 1; color: #ffd966; font-weight: bold; } .sitscore .dash { opacity: .5; font-size: .7em; }
 .sit1 { line-height: 1.25; } .sit1 small { opacity: .85; font-size: calc(13px * var(--fs)); font-weight: normal; }
