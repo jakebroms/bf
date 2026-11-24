@@ -355,7 +355,7 @@ body.dark .key { background: #262c36; color: #e6e6e6; border-color: #4a5366; } b
 .gz-note { font-size: calc(13px * var(--fs)) !important; margin: 0 0 4px !important; }
 .gz-side { font-size: calc(13px * var(--fs)); border-left: 1px solid #bbb; padding-left: 16px; } .gz-side div { margin: 2px 0; }
 table.gz-stand, table.gz-line { border-collapse: collapse; width: 100%; font-size: calc(12px * var(--fs)); margin: 4px 0 8px; } table.gz-stand td, table.gz-stand th, table.gz-line td, table.gz-line th { padding: 1px 4px; text-align: center; border-bottom: 1px solid #ddd; } table.gz-stand .l, table.gz-line .l { text-align: left; }
-.gz-ld { margin: 6px 0; line-height: 1.4; } .gz-ld b { display: block; }
+.gz-ld { margin: 6px 0; line-height: 1.4; } .gz-ld .gz-lg { display: block; font-weight: bold; }
 body.dark .gazette { background: #ece6d6; color: #222; }
 /* ---------- the race ---------- */
 .racebox { margin: 8px 0 14px; } .raceh { margin-bottom: 4px; } .race { width: 100%; max-width: 620px; display: block; border: 1px solid #ccc; border-radius: 6px; }
