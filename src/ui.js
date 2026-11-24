@@ -493,7 +493,7 @@ function scoreboardHtml() {
   for (let i = 0; i < 9; i++) h += `<th>${first + i}</th>`;
   h += '<th class="tot">R</th><th class="tot">H</th><th class="tot">E</th></tr>';
   for (let side = 0; side <= 1; side++) {
-    h += `<tr><td class="tm" style="border-left:4px solid ${teamColor(G.teams[side], 1)}">${friendlyCode(G.teams[side]) || '-'}</td>`;
+    h += `<tr><td class="tm">${G.teams[side] ? tmChip(G.teams[side]) : '-'}</td>`;
     for (let i = 0; i < 9; i++) { const inn = first + i; const v = G.innRuns[side][inn - 1]; const cur = inn === G.inn && G.half === side && !G.over; h += `<td class="${cur ? 'cur' : ''}">${v == null ? '' : v}</td>`; }
     const bump = UI.lastScore && UI.lastScore[side] !== G.score[side] ? ' bump' : '';
     h += `<td class="tot${bump}">${G.score[side]}</td><td class="tot">${G.hits[side]}</td><td class="tot">${G.errs[side]}</td></tr>`;
@@ -562,8 +562,12 @@ function situationHtml() {
   const stk = sb && sb.streak >= 5 ? ' · <b class="hot">' + sb.streak + '-game hitting streak</b>' : '';
   const pb = boxPitFind(pid); const ptoday = pb ? ipTxt(pb.OUTS) + ' IP, ' + pb.H + ' H, ' + pb.R + ' R, ' + pb.K + ' K' : 'warming up';
   const who = G.over ? '' : `<div class="who"><span><b>NOW BATTING</b> ${esc(fullName(bid))} <small>${esc(slotPos(side, G.next[side]))}, bats ${handTag(batsOf(bid || 'zzBAT'))}, #${G.next[side]} for ${teamCode(side)}</small><br><small class="statline">Today ${esc(today)} · Season ${esc(seas)}${stk}</small></span><span><b>PITCHING</b> ${esc(fullName(pid))} <small>${throws_(pid)}HP, ${teamCode(1 - side)}</small><br><small class="statline">Today ${esc(ptoday)} · Season ${replayPit(pid, 'W')}-${replayPit(pid, 'L')}, ERA ${replayPit(pid, 'OUTS') > 0 ? fmt2(replayPit(pid, 'ER') * 27 / replayPit(pid, 'OUTS')) : '-.--'}</small></span></div>`;
-  return `<div class="situation"><div class="sit1">${half}${outs} · ${sc}${G.over ? '' : run}</div>${who}</div>`;
+  const dia = `<svg class="dia" viewBox="0 0 64 44"><g transform="translate(32 20)">${[[0, -14, bs[1]], [12, -2, bs[0]], [-12, -2, bs[2]]].map(([x, y, on]) => `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" transform="rotate(45 ${x} ${y})" fill="${on ? '#ffcc00' : 'none'}" stroke="${on ? '#ffcc00' : '#9bb'}" stroke-width="1.5"/>`).join('')}</g>${[0, 1, 2].map(i => `<circle cx="${14 + i * 18}" cy="38" r="4" fill="${!G.over && G.outs > i ? '#ff5a5a' : 'none'}" stroke="${!G.over && G.outs > i ? '#ff5a5a' : '#9bb'}" stroke-width="1.5"/>`).join('')}</svg>`;
+  const big = `<div class="sitscore">${G.teams[0] ? tmChip(G.teams[0]) : ''}<b class="${G.score[0] > G.score[1] ? 'up' : ''}">${G.score[0]}</b><span class="dash">–</span><b class="${G.score[1] > G.score[0] ? 'up' : ''}">${G.score[1]}</b>${G.teams[1] ? tmChip(G.teams[1]) : ''}</div>`;
+  return `<div class="situation"><div class="sitleft">${dia}${big}<div class="sit1">${half}${outs}<br><small>${G.over ? sc : run.replace(/^ · /, '')}</small></div></div>${who}</div>`;
 }
+function playKind(t) { if (/Home run|homer/i.test(t)) return 'hr'; if (/\b(Single|Double|Triple)\b|singles|doubles|triples/i.test(t)) return 'hit'; if (/Walk|HBP|hit by|walks/i.test(t)) return 'walk'; if (/Strikeout|strikes out|out\b|Double play|flies|grounds|pops|lines|caught/i.test(t)) return 'out'; return ''; }
+function recentPlays() { const L = G.log.filter(l => !l.txt.startsWith('---')).slice(-4, -1).reverse(); if (!L.length) return ''; return `<div class="recent">${L.map(l => `<div>${esc(l.txt)}</div>`).join('')}</div>`; }
 function actBtn(label, caption, onclick, enabled, title) {
   return `<button class="btn act" onclick="${onclick}" ${enabled ? '' : 'disabled'} title="${esc(title || '')}"><span class="al">${label}</span><span class="ac">${esc(caption)}</span></button>`;
 }
@@ -600,7 +604,7 @@ function gameScreen() {
     <div class="col mid">
       <div class="nextbox"><div class="nexttext">${esc(st.text)}</div>${st.btn ? `<button class="btn primary ${st.kind || ''}" onclick="Actions.primary()">${esc(st.btn)}</button>` : ''}</div>
       <div class="fieldwrap"><svg id="field" viewBox="0 0 600 428" preserveAspectRatio="xMidYMid meet"></svg><div id="popHost" class="hidden"></div></div>
-      <div class="playrow">${diceHtml()}<div class="play"><div class="rolltxt">${esc(G.rollTxt)}</div><div class="playtxt">${esc(G.playTxt)}</div></div></div>
+      <div class="playrow">${diceHtml()}<div class="play ${playKind(G.rollTxt + ' ' + G.playTxt)}"><div class="rolltxt">${esc(G.rollTxt)}</div><div class="playtxt">${esc(G.playTxt)}</div>${recentPlays()}</div></div>
       <div class="extra">${esc(G.extra)}</div>
       <div class="ph2">MANAGER MOVES <small>· before you roll</small></div>
       <div class="btnrow acts">
@@ -659,28 +663,42 @@ function scheduleScreen() {
 }
 function boxHtml(a) {
   const ni = Math.max(9, a.innRuns[0].length);
-  let h = `<div class="box"><div class="box-t">${a.teams[0]} ${a.score[0]}, ${a.teams[1]} ${a.score[1]}  ·  ${esc(a.status)}</div><div class="box-s">${esc(a.names[0])} at ${esc(a.names[1])}  ·  ${esc(a.park)}${a.label ? '  ·  ' + esc(a.label) : ''}</div>`;
-  h += `<table class="data box-line"><tr><th class="l"></th>${Array.from({ length: ni }, (_, i) => `<th>${i + 1}</th>`).join('')}<th>R</th><th>H</th><th>E</th></tr>`;
-  for (let s = 0; s <= 1; s++) h += `<tr><td class="l">${esc(a.names[s])}</td>${Array.from({ length: ni }, (_, i) => `<td>${a.innRuns[s][i] == null ? (s === 1 && a.bottomSkipped && i === a.innRuns[0].length - 1 ? 'x' : '') : a.innRuns[s][i]}</td>`).join('')}<td><b>${a.score[s]}</b></td><td><b>${a.hits[s]}</b></td><td><b>${a.errs[s]}</b></td></tr>`;
-  h += '</table>' + (a.att || a.time || a.weather ? `<div class="small box-tail">${a.att ? 'Att. ' + fmtNum(a.att) + '. ' : a.dh === 2 ? 'Second game of the doubleheader. ' : ''}${a.time ? 'T ' + a.time + '. ' : ''}${a.weather ? esc(a.weather) + '.' : ''}</div>` : '') + '<div class="box-cols">';
+  const w = a.score[0] > a.score[1] ? 0 : a.score[1] > a.score[0] ? 1 : -1;
+  let h = `<div class="box"><div class="boxboard"><table class="sb big"><tr><th class="tm"></th>${Array.from({ length: ni }, (_, i) => `<th>${i + 1}</th>`).join('')}<th class="tot">R</th><th class="tot">H</th><th class="tot">E</th></tr>`;
+  for (let s = 0; s <= 1; s++) h += `<tr class="${w === s ? 'won' : ''}"><td class="tm">${tmChip(a.teams[s])} ${esc(a.names[s])}</td>${Array.from({ length: ni }, (_, i) => `<td>${a.innRuns[s][i] == null ? (s === 1 && a.bottomSkipped && i === a.innRuns[0].length - 1 ? 'x' : '') : a.innRuns[s][i]}</td>`).join('')}<td class="tot">${a.score[s]}</td><td class="tot">${a.hits[s]}</td><td class="tot">${a.errs[s]}</td></tr>`;
+  h += `</table><div class="boxmeta"><b>${esc(a.status)}</b> · ${esc(a.park)}${a.label ? ' · ' + esc(String(a.label).replace(/^#\d+ · /, '')) : ''}${a.att ? ' · attendance ' + fmtNum(a.att) : a.dh === 2 ? ' · second game of the doubleheader' : ''}${a.time ? ' · time ' + a.time : ''}${a.weather ? ' · ' + esc(a.weather) : ''}</div></div>`;
+  const dec = p => p.dec ? `<span class="dec ${p.dec[0]}">${esc(p.dec)}</span>` : '';
+  h += '<div class="box-cols">';
   for (let s = 0; s <= 1; s++) {
     const tm = a.teams[s]; const tot = {}; BAT_COLS.forEach(c => tot[c] = 0);
-    h += `<table class="data"><tr><th class="l">${esc(a.names[s])}</th><th>ab</th><th>r</th><th>h</th><th>2b</th><th>3b</th><th>hr</th><th>bi</th><th>bb</th><th>so</th><th>sb</th><th>avg</th></tr>`;
-    for (let slot = 1; slot <= 9; slot++) { let first = true; for (const b of a.bat) if (b.team === tm && b.slot === slot) { h += `<tr><td class="l">${first ? '' : '&nbsp;&nbsp;&nbsp;'}${esc(lastName(b.id))} ${esc(b.pos)}</td><td>${b.AB}</td><td>${b.R}</td><td>${b.H}</td><td>${b['2B']}</td><td>${b['3B']}</td><td>${b.HR}</td><td>${b.RBI}</td><td>${b.BB}</td><td>${b.K}</td><td>${b.SB}</td><td>${b.avg}</td></tr>`; BAT_COLS.forEach(c => tot[c] += b[c]); first = false; } }
-    h += `<tr class="tot"><td class="l">Totals</td><td>${tot.AB}</td><td>${tot.R}</td><td>${tot.H}</td><td>${tot['2B']}</td><td>${tot['3B']}</td><td>${tot.HR}</td><td>${tot.RBI}</td><td>${tot.BB}</td><td>${tot.K}</td><td>${tot.SB}</td><td></td></tr></table><div class="small">Left on base: ${a.lob[s]}</div>`;
-    h += `<table class="data"><tr><th class="l">${esc(a.names[s])}</th><th>ip</th><th>h</th><th>r</th><th>er</th><th>bb</th><th>so</th><th>hr</th><th>era</th></tr>`;
-    for (const p of a.pit) if (p.team === tm) h += `<tr><td class="l">${esc(lastName(p.id))}${p.dec ? ' (' + esc(p.dec) + ')' : ''}</td><td>${ipTxt(p.OUTS)}</td><td>${p.H}</td><td>${p.R}</td><td>${p.ER}</td><td>${p.BB}</td><td>${p.K}</td><td>${p.HR}</td><td>${p.era}</td></tr>`;
-    h += '</table>';
+    h += `<div class="boxcol"><div class="stcard"><div class="stcard-h" style="background:${teamColor(tm, 1)};border-bottom:3px solid ${teamColor(tm, 2)}">${esc(a.names[s])} batting</div><table class="stbl boxt"><tr><th class="l">Player</th><th>AB</th><th>R</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>RBI</th><th>BB</th><th>SO</th><th>SB</th><th>AVG</th></tr>`;
+    for (let slot = 1; slot <= 9; slot++) { let first = true; for (const b of a.bat) if (b.team === tm && b.slot === slot) { const star = b.HR > 0 || b.H >= 3 || b.RBI >= 3; h += `<tr class="${first ? '' : 'sub'}${star ? ' star' : ''}"><td class="l">${first ? '' : '<span class="subarrow">↳</span>'}${esc(lastName(b.id))} <span class="pos">${esc(b.pos)}</span></td><td>${b.AB}</td><td>${b.R}</td><td>${b.H}</td><td>${b['2B']}</td><td>${b['3B']}</td><td>${b.HR}</td><td>${b.RBI}</td><td>${b.BB}</td><td>${b.K}</td><td>${b.SB}</td><td class="dim">${b.avg}</td></tr>`; BAT_COLS.forEach(c => tot[c] += b[c]); first = false; } }
+    h += `<tr class="tot"><td class="l">Totals</td><td>${tot.AB}</td><td>${tot.R}</td><td>${tot.H}</td><td>${tot['2B']}</td><td>${tot['3B']}</td><td>${tot.HR}</td><td>${tot.RBI}</td><td>${tot.BB}</td><td>${tot.K}</td><td>${tot.SB}</td><td></td></tr></table><div class="boxfoot">Left on base ${a.lob[s]} · errors ${a.errs[s]}</div></div>`;
+    h += `<div class="stcard"><div class="stcard-h" style="background:${teamColor(tm, 1)};border-bottom:3px solid ${teamColor(tm, 2)}">${esc(a.names[s])} pitching</div><table class="stbl boxt"><tr><th class="l">Pitcher</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>BB</th><th>SO</th><th>HR</th><th>ERA</th></tr>`;
+    for (const p of a.pit) if (p.team === tm) h += `<tr class="${p.dec ? 'dec-' + p.dec[0] : ''}"><td class="l">${esc(lastName(p.id))} ${dec(p)}</td><td>${ipTxt(p.OUTS)}</td><td>${p.H}</td><td>${p.R}</td><td>${p.ER}</td><td>${p.BB}</td><td>${p.K}</td><td>${p.HR}</td><td class="dim">${p.era}</td></tr>`;
+    h += '</table></div></div>';
   }
-  return h + '</div></div>';
+  h += '</div>' + boxFooter(a) + '</div>';
+  return h;
+}
+// the classic box score footer: E, 2B, 3B, HR, SB, LOB
+function boxFooter(a) {
+  if (!a.pa || !a.pa.length) return '';
+  const byCode = code => { const m = {}; for (const p of a.pa) if (p.code === code) { const k = p.s + '|' + p.id; m[k] = (m[k] || 0) + 1; } return m; };
+  const list = (m, tag) => { const parts = [[], []]; for (const k in m) { const [s, id] = k.split('|'); parts[s].push(lastName(id) + (m[k] > 1 ? ' ' + m[k] : '')); } const out = [0, 1].map(s => parts[s].length ? `${friendlyCode(a.teams[s])} ${parts[s].join(', ')}` : '').filter(Boolean).join('; '); return out ? `<div><b>${tag}:</b> ${esc(out)}.</div>` : ''; };
+  const sb = {}; for (const p of a.pa) if (p.sb) { const k = p.s + '|' + p.id; sb[k] = (sb[k] || 0) + p.sb; }
+  const kk = [0, 1].map(s => a.bat.filter(b => b.team === a.teams[s]).reduce((x, b) => x + b.K, 0));
+  const dp = a.pa.filter(p => /DP|double play/i.test(p.txt || '')).length;
+  return `<div class="boxnotes">${list(byCode('2B'), '2B')}${list(byCode('3B'), '3B')}${list(byCode('HR'), 'HR')}${list(sb, 'SB')}<div><b>LOB:</b> ${friendlyCode(a.teams[0])} ${a.lob[0]}, ${friendlyCode(a.teams[1])} ${a.lob[1]}.${dp ? ` <b>DP:</b> ${dp}.` : ''} <b>SO:</b> ${friendlyCode(a.teams[0])} ${kk[0]}, ${friendlyCode(a.teams[1])} ${kk[1]}.</div></div>`;
 }
 function boxScreen() {
   const root = $('screen'); const keys = Object.keys(S.archive).map(Number).sort((a, b) => b - a);
-  let h = `<div class="pane"><h2>Box score</h2><div class="btnrow"><label>Game <select onchange="boxPick=this.value;UI.refresh()"><option value="current"${boxPick === 'current' ? ' selected' : ''}>Current game</option>${keys.map(k => `<option value="${k}"${String(boxPick) === String(k) ? ' selected' : ''}>${esc(S.archive[k].label)}</option>`).join('')}</select></label><button class="mini" onclick="UI.copyText('box')">Copy as text</button></div>`;
   let a = null;
   if (boxPick === 'current') { if (G.teams[0] && G.lineup[0].length) a = snapGame('Current game'); } else a = S.archive[boxPick];
-  h += a ? boxHtml(a) : '<p>No game loaded.</p>';
-  if (a) { const key = boxPick === 'current' ? G.gameNo : boxPick; h += `<h3>Notes on this game</h3><textarea class="notes" rows="4" placeholder="Your own notes on the game: who looked good, what you would do differently..." onchange="S.notes[${key}]=this.value;saveAll();Net.saveNotes(${key},this.value)">${esc(S.notes[key] || '')}</textarea>`; }
+  let h = `<div class="pane stats">` + heroHtml('Box score', a ? `${esc(a.names[0])} at ${esc(a.names[1])}` : 'No game loaded yet');
+  h += `<div class="btnrow"><label class="pick">Game <select onchange="boxPick=this.value;UI.refresh()"><option value="current"${boxPick === 'current' ? ' selected' : ''}>Current game</option>${keys.map(k => `<option value="${k}"${String(boxPick) === String(k) ? ' selected' : ''}>${esc(S.archive[k].label)}</option>`).join('')}</select></label><button class="btn" onclick="window.print()">Print</button><button class="mini" onclick="UI.copyText('box')" title="Copies the box score as plain text, for an e-mail">Copy as text</button></div>`;
+  h += a ? boxHtml(a) : '<p class="dim">Start a game and the box score appears here.</p>';
+  if (a) { const key = boxPick === 'current' ? G.gameNo : boxPick; h += `<h3 class="sec">Your notes on this game</h3><textarea class="notes" rows="4" placeholder="Who looked good, what you would do differently, anything worth remembering..." onchange="S.notes[${key}]=this.value;saveAll();Net.saveNotes(${key},this.value)">${esc(S.notes[key] || '')}</textarea>`; }
   root.innerHTML = h + '</div>'; UI._box = a;
 }
 function logScreen() {

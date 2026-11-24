@@ -2,7 +2,7 @@
 'use strict';
 
 // ---------- the kit ----------
-const tmChip = (code, cls) => { const c1 = teamColor(code, 1), c2 = teamColor(code, 2); return `<span class="tm ${cls || ''}" style="background:${c1};border-color:${c2}" title="${esc(teamFull(code))}">${esc(friendlyCode(code))}</span>`; };
+const tmChip = (code, cls) => { const c1 = teamColor(code, 1), c2 = teamColor(code, 2); return `<span class="tmc ${cls || ''}" style="background:${c1};border-color:${c2}" title="${esc(teamFull(code))}">${esc(friendlyCode(code))}</span>`; };
 function heroHtml(title, sub, chips) {
   return `<div class="hero"><div><div class="hero-t">${title}</div><div class="hero-s">${sub}</div></div>${chips && chips.length ? `<div class="hero-c">${chips.map(([k, v]) => `<div class="hc"><div class="hv">${v}</div><div class="hk">${k}</div></div>`).join('')}</div>` : ''}</div>`;
 }
